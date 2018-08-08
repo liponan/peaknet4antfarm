@@ -13,8 +13,8 @@ from util import loss, loadLabels, IOU
 class Peaknet():
 
     '''
-    “imgs: variable name”
-    “labels: variable name"
+    "imgs: variable name"
+    "labels: variable name"
     '''
     def train( self, model, imgs, labels, box_size = 7, tmp_path="tmps" ):
         dn = Darknet('cfg/newpeaksv9-yolo.cfg')
@@ -22,8 +22,8 @@ class Peaknet():
         return dn
 
     '''
-    “imgs: string”
-    “labels: string"
+    "imgs: string"
+    "labels: string"
     '''
     def train_from_shm( self, model, imgs, labels, box_size = 7, tmp_path="tmps" ):
         model = None
@@ -38,3 +38,6 @@ class Peaknet():
     def validate( self, imgs, golden_labels, box_size = 7, tmp_path="tmps" ):
         results = None
         return results
+
+    def updateModel():
+        return None
