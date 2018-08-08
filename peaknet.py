@@ -17,8 +17,9 @@ class Peaknet():
     “labels: variable name"
     '''
     def train( self, model, imgs, labels, box_size = 7, tmp_path="tmps" ):
-        model = None
-        return model
+        dn = Darknet('cfg/newpeaksv9-yolo.cfg')
+        dn.load_weights("weights/newpeaksv9_40000.weights")
+        return dn
 
     '''
     “imgs: string”
