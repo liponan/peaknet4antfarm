@@ -18,15 +18,11 @@ class Peaknet():
     def __init__(self):
         self.model = None
 
-
     def loadDNWeights( self, cfgPath, weightsPath ):
-        self.model = Darknet(workPath + 'cfg/newpeaksv5.cfg')
-        self.model.load_weights(workPath + "weights/newpeaksv5.backup")
-
-    '''
-    "imgs: variable name"
-    "labels: variable name"
-    '''
+        # self.model = Darknet(workPath + 'cfg/newpeaksv5.cfg')
+        # self.model.load_weights(workPath + "weights/newpeaksv5.backup")
+        self.model = Darknet(workPath + 'cfg/newpeaksv9.cfg')
+        self.model.load_weights(workPath + "weights/newpeaksv9_40000.weights")
 
     def train( self, imgs, labels, box_size = 7 ):
         print("training...")
@@ -34,23 +30,17 @@ class Peaknet():
     def model( self ):
         return self.model
 
-    '''
-    "imgs: string"
-    "labels: string"
-    '''
-    def train_from_shm( self, imgs, labels, box_size = 7 ):
-        model = None
-        return model
-
-
     def test( self, imgs, box_size = 7 ):
         results = None
         return results
-
 
     def validate( self, imgs, golden_labels, box_size = 7 ):
         results = None
         return results
 
-    def updateModel():
-        return None
+    def updateModel( self, model ):
+        self.model = model
+
+    # def optimize( self, model ):
+        # for param in self.model.parameters():
+        #     param.grad.data = model.
