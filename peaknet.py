@@ -21,8 +21,9 @@ class Peaknet():
     def loadDNWeights( self, cfgPath, weightsPath ):
         # self.model = Darknet(workPath + 'cfg/newpeaksv5.cfg')
         # self.model.load_weights(workPath + "weights/newpeaksv5.backup")
+
         self.model = Darknet(workPath + 'cfg/newpeaksv9.cfg')
-        self.model.load_weights(workPath + "weights/newpeaksv9_40000.weights")
+        self.model.load_weights(workPath + "weights/newpeaksv9.backup")
 
     def train( self, imgs, labels, box_size = 7 ):
         print("training...")

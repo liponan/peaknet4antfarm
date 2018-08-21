@@ -58,9 +58,9 @@ def train_batch( model, imgs, labels, batch_size=32, use_cuda=True ):
         peaknet_dataset.listDataset(imgs, labels,
                         shape=(imgs.shape[2], imgs.shape[3]),
                         shuffle=True,
-                        # transform=transforms.Compose([
-                        #     transforms.ToTensor(),
-                        #     ]),
+                        #transform=transforms.Compose([
+                        #    transforms.ToTensor(),
+                        #    ]),
                         transform=None,
                         train=True,
                         # seen=cur_model.seen,
@@ -73,6 +73,8 @@ def train_batch( model, imgs, labels, batch_size=32, use_cuda=True ):
     # lr = adjust_learning_rate(optimizer, processed_batches)
     # logging('epoch %d, processed %d samples, lr %f' % (epoch, epoch * len(train_loader.dataset), lr))
     model.train()
+    region_loss = model.loss
+    region_loss.seen = model.seen
     t1 = time.time()
     avg_time = torch.zeros(9)
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -84,13 +86,15 @@ def train_batch( model, imgs, labels, batch_size=32, use_cuda=True ):
 
         if use_cuda:
             data = data.cuda()
-            #target= target.cuda()
+            target= target.cuda()
         t3 = time.time()
+        print( "before", data )
         data, target = Variable(data), Variable(target)
         t4 = time.time()
         # optimizer.zero_grad()
         t5 = time.time()
-        output = model(data.double())
+        print( "after", data )
+        output = model( data.float() )
         t6 = time.time()
         region_loss.seen = region_loss.seen + data.data.size(0)
         loss = region_loss(output, target)

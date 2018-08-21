@@ -6,6 +6,7 @@ import random
 import torch
 import numpy as np
 from torch.utils.data import Dataset
+from torch.autograd import Variable
 from PIL import Image
 sys.path.append(os.path.abspath('../pytorch-yolo2'))
 from utils import read_truths_args, read_truths
