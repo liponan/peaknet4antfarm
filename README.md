@@ -21,6 +21,13 @@ Add the following lines to your `~/.bashrc` file.
 export PYTHONPATH=/reg/neh/home5/liponan/ai/peaknet4antfarm:/reg/neh/home5/liponan/ai/pytorch-yolo2:$PYTHONPATH
 ```
 
+I recommend creating an isolated environment for running Peaknet, as it requires an old version of PyTorch.
+```
+conda create --name antfarm python=2.7 pytorch=0.1.12 torchvision numpy h5py
+conda activate antfarm
+conda install --channel lcls-rhel7 psana-conda
+```
+
 
 ## API
 
