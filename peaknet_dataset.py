@@ -16,7 +16,7 @@ class listDataset(Dataset):
 
     def __init__(self, imgs, labels, shape=None, shuffle=True, transform=None,
                     target_transform=None, train=False, seen=0, batch_size=64,
-                    num_workers=4):
+                    box_size=7, num_workers=4):
        # with open(root, 'r') as file:
        #     self.lines = file.readlines()
 
@@ -30,6 +30,7 @@ class listDataset(Dataset):
        self.target_transform = target_transform
        self.train = train
        self.shape = shape
+       self.box_size = box_size
        self.seen = seen
        self.batch_size = batch_size
        self.num_workers = num_workers
@@ -58,15 +59,18 @@ class listDataset(Dataset):
         #        width = (random.randint(0,9) + 10)*32
         #        self.shape = (width, width)
 
+
+	maxPeaks = 1024
+
         if self.train:
             jitter = 0#0.2
             hue = 0#0.1
             saturation = 0#1.5
             exposure = 0#1.5
-            box_size = 7
+            #box_size = 7
 
             (n,m,h,w) = self.imgs.shape
-            print(index)
+            #print(index)
             ind1 = index / m
             ind2 = index % m
 
@@ -75,16 +79,20 @@ class listDataset(Dataset):
             img = img.view(-1, h, w )
             r = np.reshape( self.labels[ind1][1][ self.labels[ind1][0]==ind2 ], (-1,1) )
             c = np.reshape( self.labels[ind1][2][ self.labels[ind1][0]==ind2 ], (-1,1) )
+            label = torch.zeros(5*maxPeaks)
             try:
                 tmp = np.concatenate( (np.zeros( (r.shape[0],1) ),
                                             r, c,
-                                            box_size*np.ones( (r.shape[0],2) ) ), axis=1 )
+                                            self.box_size*np.ones( (r.shape[0],2) ) ), axis=1 )
                 tmp = torch.from_numpy(tmp)
-            except Exception:
+            except:
                 tmp = torch.zeros(1,5)
             tmp = tmp.view(-1)
             # img, label = load_data_detection(imgpath, self.shape, jitter, hue, saturation, exposure)
-            label = tmp
+            if r.shape[0] > 0 and tmp.numel() > 5:
+                #print(label.size())
+                #print(tmp.size())
+                label[0:(5*r.shape[0])] = tmp
         else:
             img = Image.open(imgpath).convert('RGB')
             if self.shape:
