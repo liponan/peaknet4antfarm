@@ -12,6 +12,15 @@ peaknet.model.print_network() # print network
 next(peaknet.model.parameters()) # a good way to see if the net is on GPU
 ```
 
+## Setup
+
+Add the following lines to your `~/.bashrc` file.
+```
+# PEAKNET4ANTFARM
+export PYTHONPATH=/reg/neh/home5/liponan/ai/peaknet4antfarm:/reg/neh/home5/liponan/ai/pytorch-yolo2:$PYTHONPATH
+```
+
+
 ## API
 
 ### train 
