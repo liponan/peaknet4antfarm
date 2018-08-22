@@ -5,6 +5,7 @@ A peaknet API with pytorch backbone
 ## Example
 
 ```
+from peaknet import Peaknet
 peaknet = Peaknet() # Init a Peaknet instance
 peaknet.loadDNWeights() # Load newpeaksv9 network and pretrained weights 
 peaknet.model.cuda() # transfer the net to GPU
