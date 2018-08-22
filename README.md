@@ -25,7 +25,7 @@ I recommend creating an isolated environment for running Peaknet, as it requires
 ```
 conda create --name antfarm python=2.7 pytorch=0.1.12 torchvision numpy h5py
 conda activate antfarm
-conda install --channel lcls-rhel7 psana-conda
+conda install --channel lcls-rhel7 psana-conda --force ## adding --force prevents conda from downgrading pytorch...
 ```
 
 
