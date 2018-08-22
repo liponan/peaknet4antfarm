@@ -20,6 +20,16 @@ from region_loss import RegionLoss
 from darknet import Darknet
 from models.tiny_yolo import TinyYoloNet
 
+
+def updateGrad( model1, model2 ):
+    #with torch.no_grad():
+    model_dict1 = dict( model1.named_parameters() )
+    model_dict2 = dict( model2.named_parameters() )
+    for key, value in model_dict2.items():
+        model_dict1[key].grad.data = model_dict2[key].grad.data
+
+
+
 def optimize( model ):
     # lr = learning_rate/batch_size
     lr = 0.001
@@ -47,7 +57,7 @@ def adjust_learning_rate(optimizer, batch):
         param_group['lr'] = lr/batch_size
     return lr
 
-def train_batch( model, imgs, labels, batch_size=32, use_cuda=True ):
+def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True ):
     # global processed_batches
     # t0 = time.time()
     # if ngpus > 1:
@@ -63,6 +73,7 @@ def train_batch( model, imgs, labels, batch_size=32, use_cuda=True ):
                         #    ]),
                         transform=None,
                         train=True,
+                        box_size=box_size,
                         # seen=cur_model.seen,
                         batch_size=batch_size
                         # num_workers=num_workers
@@ -88,12 +99,12 @@ def train_batch( model, imgs, labels, batch_size=32, use_cuda=True ):
             data = data.cuda()
             target= target.cuda()
         t3 = time.time()
-        print( "before", data )
+        #print( "before", data )
         data, target = Variable(data), Variable(target)
         t4 = time.time()
         # optimizer.zero_grad()
         t5 = time.time()
-        print( "after", data )
+        #print( "after", data )
         output = model( data.float() )
         t6 = time.time()
         region_loss.seen = region_loss.seen + data.data.size(0)
