@@ -6,6 +6,7 @@ import torch as t
 import sys
 sys.path.append(os.path.abspath('../pytorch-yolo2'))
 from darknet import Darknet
+from peaknet_train import train_batch
 # from train import train_peaknet
 # from preprocess import prep_image, inp_to_image
 # from util import loss, loadLabels, IOU
@@ -18,7 +19,7 @@ class Peaknet():
     def __init__(self):
         self.model = None
 
-    def loadDNWeights( self, cfgPath, weightsPath ):
+    def loadDNWeights( self ):
         # self.model = Darknet(workPath + 'cfg/newpeaksv5.cfg')
         # self.model.load_weights(workPath + "weights/newpeaksv5.backup")
 
@@ -26,7 +27,7 @@ class Peaknet():
         self.model.load_weights(workPath + "weights/newpeaksv9.backup")
 
     def train( self, imgs, labels, box_size = 7 ):
-        print("training...")
+        train_batch( self.model, imgs, labels, batch_size=32, box_size=7, use_cuda=True )        
 
     def model( self ):
         return self.model
