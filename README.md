@@ -39,3 +39,9 @@ replaces the current model with `newModel`, including the network and the weight
 peaknet.updateModel( newModel )
 ```
 replaces gradients in the current model with that from `newModel`. `newModel` must have same network as current model.
+
+### optimize
+```
+peaknet.optimize()
+```
+performs one step of SGD optimization.
