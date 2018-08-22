@@ -15,6 +15,11 @@ import peaknet_train
 # workPath = "/reg/neh/home/liponan/ai/peaknet4antfarm/"
 workPath = "../pytorch-yolo2/"
 
+
+cwd = os.path.abspath(os.path.dirname(__file__))
+
+
+
 class Peaknet():
 
     def __init__(self):
@@ -24,8 +29,8 @@ class Peaknet():
         # self.model = Darknet(workPath + 'cfg/newpeaksv5.cfg')
         # self.model.load_weights(workPath + "weights/newpeaksv5.backup")
 
-        self.model = Darknet(workPath + 'cfg/newpeaksv9.cfg')
-        self.model.load_weights(workPath + "weights/newpeaksv9.backup")
+        self.model = Darknet( os.path.join( cwd, workPath, 'cfg/newpeaksv9.cfg' ) )
+        self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv9.backup") )
 
     def train( self, imgs, labels, box_size = 7 ):
         peaknet_train.train_batch( self.model, imgs, labels, batch_size=32, box_size=7, use_cuda=True )        
@@ -47,7 +52,7 @@ class Peaknet():
     def updateGrad( self, model ):
         peaknet_train.updateGrad( self.model, model )
 
-    def optimize( self )
+    def optimize( self ):
         peaknet_train.optimize( self.model )
 
 
