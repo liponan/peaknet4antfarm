@@ -7,10 +7,10 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 from torch.autograd import Variable
-from PIL import Image
-#sys.path.append(os.path.abspath('../pytorch-yolo3'))
+#from PIL import Image
+sys.path.append(os.path.abspath('../pytorch-yolo3'))
 from utils import read_truths_args, read_truths
-from image import *
+#from image import *
 
 class listDataset(Dataset):
 
@@ -82,8 +82,10 @@ class listDataset(Dataset):
             label = torch.zeros(5*maxPeaks)
             try:
                 tmp = np.concatenate( (np.zeros( (r.shape[0],1) ),
-                                            r, c,
-                                            self.box_size*np.ones( (r.shape[0],2) ) ), axis=1 )
+                                            1.0*c/w, 1.0*r/h,
+                                            1.0*self.box_size/w*np.ones( (r.shape[0],1) ),
+                                            1.0*self.box_size/h*np.ones( (r.shape[0],1) )), 
+                                            axis=1 )
                 tmp = torch.from_numpy(tmp)
             except:
                 tmp = torch.zeros(1,5)
@@ -94,6 +96,8 @@ class listDataset(Dataset):
                 #print(tmp.size())
                 label[0:(5*r.shape[0])] = tmp
         else:
+            raise("not implemented")
+            '''
             img = Image.open(imgpath).convert('RGB')
             if self.shape:
                 img = img.resize(self.shape)
@@ -114,6 +118,7 @@ class listDataset(Dataset):
                 label = tmp[0:maxPeaks*5]
             elif tsz > 0:
                 label[0:tsz] = tmp
+            '''
 
         if self.transform is not None:
             img = self.transform(img)
