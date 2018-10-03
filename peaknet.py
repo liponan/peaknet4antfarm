@@ -25,18 +25,34 @@ class Peaknet():
     def __init__(self):
         self.model = None
 
+    def loadWeights( self, cfgFile, weightFile ):
+        self.model = Darknet( cfgFile )
+        self.model.load_weights( weightFile )
+
     def loadDNWeights( self ):
         # self.model = Darknet(workPath + 'cfg/newpeaksv5.cfg')
         # self.model.load_weights(workPath + "weights/newpeaksv5.backup")
 
-        self.model = Darknet( os.path.join( cwd, workPath, 'cfg/newpeaksv9.cfg' ) )
-        self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv9.backup") )
+        #self.model = Darknet( os.path.join( cwd, workPath, 'cfg/newpeaksv9-asic.cfg' ) )
+        #self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv9_40000.weights") )
+        self.model = Darknet( os.path.join( cwd, workPath, 'cfg/newpeaksv10-asic.cfg' ) )
+        self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv10_40000.weights") )
+        #self.model.load_weights( os.path.join( cwd, workPath, "../darknet/backup/newpeaksv10_100.weights") )
 
-    def train( self, imgs, labels, box_size = 7 ):
-        peaknet_train.train_batch( self.model, imgs, labels, batch_size=32, box_size=7, use_cuda=True )        
+
+    def train( self, imgs, labels, box_size = 7, batch_size=1, use_cuda=True, writer=None ):
+        peaknet_train.train_batch( self.model, imgs, labels, batch_size=batch_size, box_size=box_size, 
+                                    use_cuda=use_cuda, writer=writer)        
 
     def model( self ):
         return self.model
+
+    def getGrad( self ):
+        grad = {}
+        model_dict = dict( self.model.named_parameters() )
+        for key, val in model_dict.items():
+            grad[key] = val.grad.cpu()
+        return grad
 
     def test( self, imgs, box_size = 7 ):
         results = None
@@ -49,11 +65,11 @@ class Peaknet():
     def updateModel( self, model ):
         self.model = model
 
-    def updateGrad( self, model ):
-        peaknet_train.updateGrad( self.model, model )
+    def updateGrad( self, grads ):
+        peaknet_train.updateGrad( self.model, grads )
 
-    def optimize( self ):
-        peaknet_train.optimize( self.model )
+    def optimize( self, adagrad=False ):
+        peaknet_train.optimize( self.model, adagrad=adagrad )
 
 
     # def optimize( self, model ):

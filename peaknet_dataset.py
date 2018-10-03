@@ -8,7 +8,7 @@ import numpy as np
 from torch.utils.data import Dataset
 from torch.autograd import Variable
 from PIL import Image
-sys.path.append(os.path.abspath('../pytorch-yolo2'))
+#sys.path.append(os.path.abspath('../pytorch-yolo3'))
 from utils import read_truths_args, read_truths
 from image import *
 
@@ -99,7 +99,7 @@ class listDataset(Dataset):
                 img = img.resize(self.shape)
 
             labpath = imgpath.replace('images', 'labels').replace('JPEGImages', 'labels').replace('.jpg', '.txt').replace('.png','.txt')
-            label = torch.zeros(50*5)
+            label = torch.zeros(maxPeaks*5)
             #if os.path.getsize(labpath):
             #tmp = torch.from_numpy(np.loadtxt(labpath))
             try:
@@ -110,8 +110,8 @@ class listDataset(Dataset):
             tmp = tmp.view(-1)
             tsz = tmp.numel()
             #print('labpath = %s , tsz = %d' % (labpath, tsz))
-            if tsz > 50*5:
-                label = tmp[0:50*5]
+            if tsz > maxPeaks*5:
+                label = tmp[0:maxPeaks*5]
             elif tsz > 0:
                 label[0:tsz] = tmp
 

@@ -20,25 +20,30 @@ from region_loss import RegionLoss
 from darknet import Darknet
 from models.tiny_yolo import TinyYoloNet
 
-
-def updateGrad( model1, model2 ):
+def updateGrad( model, grad ):
     #with torch.no_grad():
-    model_dict1 = dict( model1.named_parameters() )
-    model_dict2 = dict( model2.named_parameters() )
-    for key, value in model_dict2.items():
-        model_dict1[key].grad.data = model_dict2[key].grad.data
+    model_dict = dict( model.named_parameters() )
+    #model_dict2 = dict( model2.named_parameters() )
+    for key, value in model_dict.items():
+        #model_dict[key].grad.data = grad[key].data
+        model_dict[key]._grad = grad[key]
+    model.cuda()
 
 
 
-def optimize( model ):
+def optimize( model, adagrad=False ):
     # lr = learning_rate/batch_size
-    lr = 0.001
-    momentum = 0.9
-    decay = 0.005
-    batch_size = 1
-    optimizer = optim.SGD(model.parameters(), lr=lr,
+    if adagrad:
+        lr = 0.0005
+        decay = 0.005
+        optimizer = optim.Adagrad(model.parameters(), lr = lr, weight_decay=decay)
+    else:
+        lr = 0.0001
+        momentum = 0.9
+        decay = 0.05
+        optimizer = optim.SGD(model.parameters(), lr=lr,
                             momentum=momentum, dampening=0,
-                            weight_decay=decay*batch_size)
+                            weight_decay=decay)
     optimizer.step()
 
 
@@ -57,7 +62,10 @@ def adjust_learning_rate(optimizer, batch):
         param_group['lr'] = lr/batch_size
     return lr
 
-def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True ):
+def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, writer=None ):
+    debug = True
+    
+
     # global processed_batches
     # t0 = time.time()
     # if ngpus > 1:
@@ -88,6 +96,7 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True )
     region_loss.seen = model.seen
     t1 = time.time()
     avg_time = torch.zeros(9)
+
     for batch_idx, (data, target) in enumerate(train_loader):
         t2 = time.time()
         # adjust_learning_rate(optimizer, processed_batches)
@@ -105,15 +114,37 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True )
         # optimizer.zero_grad()
         t5 = time.time()
         #print( "after", data )
-        output = model( data.float() )
+        #output = model( data )
+        output, _= model( data.float() )
+        #print(output)
         t6 = time.time()
         region_loss.seen = region_loss.seen + data.data.size(0)
+        model.seen = region_loss.seen 
+        #try:
+        if debug:
+            print("output", output.size())
+            print("label length", len(target))
+            print("label[0] length", len(target[0]))
         loss = region_loss(output, target)
+        '''
+        except:
+            print("label length", len(target))
+            print("label[0]", len(target[0]))
+            print("label[0]", target[0])
+            #print("label[0]", target[0].shape)
+            #print("label[1]", target[1].shape)
+            #print("label[2]", target[2].shape)
+            raise "something wrong with the labels?"
+        '''
         t7 = time.time()
         loss.backward()
         t8 = time.time()
         # optimizer.step()
         t9 = time.time()
+        if writer != None:
+            writer.add_scalar('loss', loss, model.seen) 
+        #writer.export_scalars_to_json("./all_scalars.json")
+        
         if False and batch_idx > 1:
             avg_time[0] = avg_time[0] + (t2-t1)
             avg_time[1] = avg_time[1] + (t3-t2)
