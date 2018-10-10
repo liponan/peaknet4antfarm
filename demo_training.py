@@ -36,7 +36,7 @@ f.close()
 print('img:', h, w)
 
 batch_size = 15
-nEpoch = 2
+nEpoch = 20
 
 ###########
 
@@ -111,13 +111,13 @@ for ep in range(nEpoch):
 	    print("batch_imgs shape", batch_imgs.shape)
 	    print("batch_labels shape", len(batch_labels), len(batch_labels[0]), batch_labels[0][0].shape)
 	    pn.train( batch_imgs, batch_labels, batch_size=32*3, use_cuda=True, writer=writer )
-	    pn.optimize(adagrad=False)
+	    pn.optimize(adagrad=True)
 	    #peaknet_train.train_batch( pn.model, batch_imgs, batch_labels, batch_size=32*3, use_cuda=True )
 	    #peaknet_train.optimize()
 	    t5 = time.time()
 	    print("time per event", 1.0*(t5-t0)/batch_size)
             pn.model.save_weights( "results/cxic0415_0091_ep"+str(ep)+".weights" )
-            print("before", next( pn.model.parameters() ).grad[0,:,:] )
+            #print("before", next( pn.model.parameters() ).grad[0,:,:] )
             pn.updateGrad( pn.getGrad() )
             print("after", next( pn.model.parameters() ).grad[0,:,:] )
 

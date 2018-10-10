@@ -36,8 +36,8 @@ class Peaknet():
         #self.model = Darknet( os.path.join( cwd, workPath, 'cfg/newpeaksv9-asic.cfg' ) )
         #self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv9_40000.weights") )
         self.model = Darknet( os.path.join( cwd, workPath, 'cfg/newpeaksv10-asic.cfg' ) )
-        self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv10_40000.weights") )
-        #self.model.load_weights( os.path.join( cwd, workPath, "../darknet/backup/newpeaksv10_100.weights") )
+        #self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv10_40000.weights") )
+        self.model.load_weights( os.path.join( cwd, workPath, "../darknet/backup/newpeaksv10_500.weights") )
 
 
     def train( self, imgs, labels, box_size = 7, batch_size=1, use_cuda=True, writer=None ):
