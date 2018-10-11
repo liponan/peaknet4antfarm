@@ -5,7 +5,7 @@ import psana
 import torch as t
 import numpy as np
 from peaknet import Peaknet
-from peaknet_utils import output_transform
+#from peaknet_utils import output_transform
 from darknet_utils import get_region_boxes, nms
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
@@ -15,25 +15,32 @@ import cv2
 from heapq import *
 import json
 
+# global variables
+layers = [0,2,4,6,7,8,9]
+fovs = [3+2, None, 8+3, None, 18+5, None, 20+7, 22+7, 24+7, 26+7]
+
+nfactor = [1, 2, 2, 4, 4, 8, 8, 8, 8, 8]
+nlayers = [32, 32, 64, 64, 128, 128, 256, 128, 64, 6]
+
+h = 192
+w = 392
+
 
 def combine_data( data, new_data, nHeapq ):
-    for l in new_data:
-        for v in new_data[l]:
-            if k in range( len( new_data[l][v] )-1, -1, -1 )
+    for l in layers:
+        for v in range(nlayers[l]):
+            for k in range( len( new_data[l][v] )-1, -1, -1 ):
                 if new_data[l][v][k][0] > data[l][v][0][0]:
                     heappush( data[l][v], new_data[l][v][k] )
                     if len(data[l][v]) > nHeapq:
                         heappop( data[l][v] )
-            else:
-                break
+                else:
+                    break
 
 
-def find_max_activatations(exp_name, run_list, nHeap=9, save_json=False):
+def find_max_activatations(exp_name, run_list, nHeapq=9, save_json=False):
 
     data = {}
-
-    h = 192
-    w = 392
 
     pn = Peaknet()
     pn.loadDNWeights()
@@ -41,16 +48,10 @@ def find_max_activatations(exp_name, run_list, nHeap=9, save_json=False):
     pn.model.eval()
     pn.model.print_network()
 
-    layers = [0,2,4,6,7,8,9]
-    fovs = [3+2, None, 8+3, None, 18+5, None, 20+7, 22+7, 24+7, 26+7]
-
-    nfactor = [1, 2, 2, 4, 4, 8, 8, 8, 8, 8]
-    nlayers = [32, 32, 64, 64, 128, 128, 256, 128, 64, 6]
-
     for u in layers:
         data[u] = {}
         for v in range(nlayers[u]):
-            data[u][v] = [(-1,None)]
+            data[u][v] = [(float("-inf"),None)]
 
     for run in run_list:
 
@@ -64,10 +65,12 @@ def find_max_activatations(exp_name, run_list, nHeap=9, save_json=False):
         print("run", run, "number of events available", numEvents)
         env = ds.env()
 
+        my_data = {}
+  
         for u in layers:
             my_data[u] = {}
             for v in range(nlayers[u]):
-                my_data[u][v] = [(-1,None)]
+                my_data[u][v] = [(float("-inf"),None)]
 
         for eventIdx in range(numEvents):
             print("==================== run " + str(run) + " event " + str(eventIdx) + \
@@ -95,17 +98,22 @@ def find_max_activatations(exp_name, run_list, nHeap=9, save_json=False):
                                                 axis=None), layer_outputs[u,v,:,:].shape)
                         if max_val > my_data[l][v][0][0]:
                             heappush( my_data[l][v], (float(max_val), run, eventIdx, u, ind) )
-                            print("layer", l, "filter", v, "@ run", run, "event", ind, "val", max_val)
+                            print("layer", l, "filter", v, "@ run", run, "pos", ind, "val", max_val)
                             if len(my_data[l][v]) > nHeapq:
                                 heappop( my_data[l][v] )
 
+        if save_json:
+            with open(exp_name + "_run" + str(run).zfill(4) + '_data.json', 'w') as outfile:
+                json.dump(my_data, outfile) 
+
         combine_data( data, my_data, nHeapq )
 
-    if save_json:
-        with open(exp_name + "_run" + str(run).zfill(4) + '_data.json', 'w') as outfile:
-            json.dump(data, outfile)
+    
+    return data
 
-def visualize(data, output_path = "results/maxact/" ):
+def visualize(exp_name, data, output_path = "results/maxact/" ):
+
+    det = psana.Detector('DscCsPad')
 
     max_x = -1
     max_y = -1
@@ -149,29 +157,29 @@ def visualize(data, output_path = "results/maxact/" ):
                 if os.path.isdir( output_path ):
                     pass
                 else:
-                    os.mkdirs( output_path )
+                    os.makedirs( output_path )
                 cv2.imwrite( os.path.join(output_path, filename), img.astype( np.uint8 ) )
             #print( img.astype( np.uint8 ) )
 
     print("max v", max_v)
 
 
-    def main():
-        # check that the file is being properly used
-        if (len(sys.argv) < 3):
-            print("Please specify an experiment name and run number list as args.")
-            return
-        # input variables
-        exp_name = sys.argv[1]
-        runs = sys.argv[2:]
-        run_list = []
-        for run in runs:
-            run_list.append( int(run) )
-        # find max activations
-        data = find_max_activatations(exp_name, run_list, nHeap=25, save_json=False)
-        # visualize
-        visualize(data, output_path = "results/maxact/" ):
+def main():
+    # check that the file is being properly used
+    if (len(sys.argv) < 3):
+        print("Please specify an experiment name and run number list as args.")
+        return
+    # input variables
+    exp_name = sys.argv[1]
+    runs = sys.argv[2:]
+    run_list = []
+    for run in runs:
+        run_list.append( int(run) )
+    # find max activations
+    data = find_max_activatations(exp_name, run_list, nHeapq=25, save_json=True)
+    # visualize
+    visualize(exp_name, data, output_path = "results/maxact/" )
 
 
 if __name__ == "__main__":
-    main()
+     main()
