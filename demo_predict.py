@@ -10,40 +10,7 @@ from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 
 
-filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
-
-
-##########
-
-print(filename)
-f = h5py.File(filename, 'r')
-nPeaks = f["entry_1/result_1/nPeaks"].value
-dataset_hits = len(nPeaks)
-print('hits: ' + str(dataset_hits))
-dataset_peaks = np.sum(nPeaks)
-print('peaks: ' + str(dataset_peaks))
-
-imgs = f["entry_1/data_1/data"]
-_, h, w = imgs.shape
-f.close()
-print('img:', h, w)
-
-batch_size = 15
-
-
-###########
-
-t3 = time.time()
-pn = Peaknet()
-pn.loadDNWeights()
-pn.model.train()
-#print("training?", pn.model.training)
-#pn.model.print_network()
-pn.model.cuda()
-t4 = time.time()
-print("model init time", t4-t3)
-
-def predict( net, filename, idx, printPeaks=False):
+def predict( net, filename, idx, conf_thresh=0.2, nms_thresh=0.45, printPeaks=False):
 
     f = h5py.File(filename, 'r')
     nPeaks = f["entry_1/result_1/nPeaks"].value
@@ -59,7 +26,10 @@ def predict( net, filename, idx, printPeaks=False):
     imgs = np.reshape( img, (8, 185, 4, 194*2) )
     imgs = np.transpose( imgs, (0, 2, 1, 3) )
     imgs = np.reshape( imgs, (1, 32, 185, 388) )
-    n, m, h, w = img.shape
+    n, m, h, w = imgs.shape
+
+    timgs = t.zeros( (32, 1, 192, 392) )
+    timgs[:,:,4:189,2:390] = t.from_numpy( imgs/15000.0 )
 
     s = np.zeros( (nPeaks[idx],) )
     r = np.zeros( (nPeaks[idx],) )
@@ -73,17 +43,17 @@ def predict( net, filename, idx, printPeaks=False):
         c[u] = my_c
         labels = (s, r, c)
 
-    imgs = imgs.cuda()
-    imgs = t.autograd.Variable( imgs )
+    timgs = timgs.cuda()
+    timgs = t.autograd.Variable( timgs )
 
     t3 = time.time()
 
-    output = pn.model(imgs)
+    output, _ = net.model(timgs)
     output = output.data
 
     t4 = time.time()
 
-    boxes = get_region_boxes(output, cfd_thresh, net.model.num_classes,
+    boxes = get_region_boxes(output, conf_thresh, net.model.num_classes,
                                 net.model.anchors, net.model.num_anchors)
 
     t5 = time.time()
@@ -114,15 +84,15 @@ def predict( net, filename, idx, printPeaks=False):
 
 def main():
 
-    pn = Peaknet()
-    pn.loadDNWeights()
-    pn.model.eval()
-    pn.model.cuda()
+    net = Peaknet()
+    net.loadDNWeights()
+    net.model.eval()
+    net.model.cuda()
 
     filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
     idx = 7
 
-    predict( net, filename, idx, printPeaks=True )
+    predict( net, filename, idx, conf_thresh=0.1, nms_thresh=0.45, printPeaks=True )
 
 
 if __name__ == "__main__":
