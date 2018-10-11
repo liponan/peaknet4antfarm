@@ -21,6 +21,8 @@ def load_from_cxi( filename, idx ):
     dataset_peaks = np.sum(nPeaks)
     print('peaks: ' + str(dataset_peaks))
     img = f["entry_1/data_1/data"][idx,:,:]
+    mask = f["entry_1/data_1/mask"][idx,:,:]
+    img = img * (1-mask)
     x_label = f['entry_1/result_1/peakXPosRaw'][idx,:]
     y_label = f['entry_1/result_1/peakYPosRaw'][idx,:]
     f.close()
@@ -136,7 +138,7 @@ def main():
     net.model.eval()
     net.model.cuda()
 
-    nms_boxes = predict( net, imgs, conf_thresh=0.15, nms_thresh=0.45, printPeaks=True )
+    nms_boxes = predict( net, imgs, conf_thresh=0.15, nms_thresh=0.1, printPeaks=True )
 
     visualize( imgs, labels, nms_boxes )
 
