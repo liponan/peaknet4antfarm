@@ -78,15 +78,16 @@ class listDataset(Dataset):
             timg = torch.zeros( img.shape )
             timg = torch.from_numpy( img )
             timg = timg.view(-1, h, w )
-            r = np.reshape( self.labels[ind1][1][ self.labels[ind1][0]==ind2 ], (-1,1) )
-            c = np.reshape( self.labels[ind1][2][ self.labels[ind1][0]==ind2 ], (-1,1) )
+            cls = np.reshape( self.labels[ind1][0][ self.labels[ind1][1]==ind2 ], (-1,1) )
+            r = np.reshape( self.labels[ind1][2][ self.labels[ind1][1]==ind2 ], (-1,1) )
+            c = np.reshape( self.labels[ind1][3][ self.labels[ind1][1]==ind2 ], (-1,1) )
+            bh = np.reshape( self.labels[ind1][4][ self.labels[ind1][1]==ind2 ], (-1,1) )
+            bw = np.reshape( self.labels[ind1][5][ self.labels[ind1][1]==ind2 ], (-1,1) )
             label = torch.zeros(5*maxPeaks)
+            bh[ bh == 0 ] = self.box_size
+            bw[ bw == 0 ] = self.box_size
             try:
-                tmp = np.concatenate( (np.zeros( (r.shape[0],1) ),
-                                            1.0*c/w, 1.0*r/h,
-                                            1.0*self.box_size/w*np.ones( (r.shape[0],1) ),
-                                            1.0*self.box_size/h*np.ones( (r.shape[0],1) )), 
-                                            axis=1 )
+                tmp = np.concatenate( cls, 1.0*c/w, 1.0*r/h, 1.0*bw/w, 1.0*bh/h), axis=1 )
                 tmp = torch.from_numpy(tmp)
             except:
                 tmp = torch.zeros(1,5)
