@@ -9,9 +9,7 @@ from darknet_utils import get_region_boxes, nms
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 
-
-def predict( net, filename, idx, conf_thresh=0.2, nms_thresh=0.45, printPeaks=False):
-
+def load_from_cxi( filename, idx ):
     f = h5py.File(filename, 'r')
     nPeaks = f["entry_1/result_1/nPeaks"].value
     dataset_hits = len(nPeaks)
@@ -28,9 +26,6 @@ def predict( net, filename, idx, conf_thresh=0.2, nms_thresh=0.45, printPeaks=Fa
     imgs = np.reshape( imgs, (1, 32, 185, 388) )
     n, m, h, w = imgs.shape
 
-    timgs = t.zeros( (32, 1, 192, 392) )
-    timgs[:,:,4:189,2:390] = t.from_numpy( imgs/15000.0 )
-
     s = np.zeros( (nPeaks[idx],) )
     r = np.zeros( (nPeaks[idx],) )
     c = np.zeros( (nPeaks[idx],) )
@@ -42,6 +37,13 @@ def predict( net, filename, idx, conf_thresh=0.2, nms_thresh=0.45, printPeaks=Fa
         r[u] = my_r
         c[u] = my_c
         labels = (s, r, c)
+
+    return imgs, labels
+
+def predict( net, imgs, conf_thresh=0.2, nms_thresh=0.45, printPeaks=False):
+
+    timgs = t.zeros( (32, 1, 192, 392) )
+    timgs[:,:,4:189,2:390] = t.from_numpy( imgs/15000.0 )
 
     timgs = timgs.cuda()
     timgs = t.autograd.Variable( timgs )
@@ -82,18 +84,53 @@ def predict( net, filename, idx, conf_thresh=0.2, nms_thresh=0.45, printPeaks=Fa
                 score = int(b[4]*100)
                 print("(%d, %d), %d x %d, score: %d" % ( x, y, ww, hh, score ) )
 
+    return nms_boxes
+
+
+def visualize( imgs, labels, nms_boxes, plot_label=True, plot_box=True,
+                output_path="results/peaks"):
+    if os.path.isdir( output_path ):
+        pass
+    else:
+        os.makedirs( output_path )
+
+    for i, box in enumerate(nms_boxes):
+        print("ASIC " + str(i))
+        if len(box) == 0:
+            continue
+        fig, ax = plt.subplots(1)
+        img = imgs[0,i,:,:]
+
+        im0 = plt.imshow(img.reshape(h,w), vmin=0, vmax=1, cmap=cm.gray)
+
+        if plot_box:
+            for peak in nms_boxes[i]:
+                x = w * ( peak[0]-0.5*peak[2] ) + 2
+                y = h * ( peak[1]-0.5*peak[3] ) + 4
+                ww = w * peak[2]
+                hh = h * peak[3]
+                rect = pat.Rectangle( (x, y), ww, hh, color="m", fill=False, linewidth=1 )
+                ax.add_patch(rect)
+
+        filename = "{}_{}.png".format(str(eventIdx).zfill(6), str(i).zfill(2))
+        fig.set_size_inches(10, 5)
+        plt.savefig( os.path.join(output_path, filename), bbox_inces='tight', dpi=300)
+
+
 def main():
+
+    filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
+    idx = 7
+    imgs, labels = load_from_cxi( filename, idx )
 
     net = Peaknet()
     net.loadDNWeights()
     net.model.eval()
     net.model.cuda()
 
-    filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
-    idx = 7
+    nms_boxes = predict( net, imgs, conf_thresh=0.1, nms_thresh=0.45, printPeaks=True )
 
-    predict( net, filename, idx, conf_thresh=0.1, nms_thresh=0.45, printPeaks=True )
-
+    visualize( imgs, labels, nms_boxes )
 
 if __name__ == "__main__":
     main()
