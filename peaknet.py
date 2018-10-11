@@ -41,6 +41,10 @@ class Peaknet():
 
 
     def train( self, imgs, labels, box_size = 7, batch_size=1, use_cuda=True, writer=None ):
+        """
+        0: peak
+        1: streak
+        """
         peaknet_train.train_batch( self.model, imgs, labels, batch_size=batch_size, box_size=box_size, 
                                     use_cuda=use_cuda, writer=writer)        
 
@@ -68,8 +72,8 @@ class Peaknet():
     def updateGrad( self, grads ):
         peaknet_train.updateGrad( self.model, grads )
 
-    def optimize( self, adagrad=False ):
-        peaknet_train.optimize( self.model, adagrad=adagrad )
+    def optimize( self, adagrad=False, lr=0.01 ):
+        peaknet_train.optimize( self.model, adagrad=adagrad, lr=lr )
 
 
     # def optimize( self, model ):

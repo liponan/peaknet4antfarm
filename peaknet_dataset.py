@@ -75,8 +75,9 @@ class listDataset(Dataset):
             ind2 = index % m
 
             img = self.imgs[ind1,ind2,:,:]
-            img = torch.from_numpy( img )
-            img = img.view(-1, h, w )
+            timg = torch.zeros( img.shape )
+            timg = torch.from_numpy( img )
+            timg = timg.view(-1, h, w )
             r = np.reshape( self.labels[ind1][1][ self.labels[ind1][0]==ind2 ], (-1,1) )
             c = np.reshape( self.labels[ind1][2][ self.labels[ind1][0]==ind2 ], (-1,1) )
             label = torch.zeros(5*maxPeaks)
@@ -127,4 +128,4 @@ class listDataset(Dataset):
             label = self.target_transform(label)
 
         self.seen = self.seen + self.num_workers
-        return (img, label)
+        return (timg.float(), label.float())

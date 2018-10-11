@@ -96,7 +96,7 @@ def predict( net, imgs, conf_thresh=0.2, nms_thresh=0.45, printPeaks=False):
 
 
 def visualize( imgs, labels, nms_boxes, plot_label=True, plot_box=True,
-                output_path="results/peaks"):
+                output_path="results/peaks", box_size=7):
     if os.path.isdir( output_path ):
         pass
     else:
@@ -112,6 +112,17 @@ def visualize( imgs, labels, nms_boxes, plot_label=True, plot_box=True,
         h, w = 192, 392
 
         im0 = plt.imshow(img, vmin=0, vmax=15000, cmap=cm.gray)
+
+        if plot_label:
+            my_r = labels[1][ labels[0] == i ]
+            my_c = labels[2][ labels[0] == i ]
+            for j in range(len(my_r)):
+                x = my_c[j] - box_size/2.0
+                y = my_r[j] - box_size/2.0
+                ww = box_size
+                hh = box_size
+                rect = pat.Rectangle( (x, y), ww, hh, color="c", fill=False, linewidth=1 )
+                ax.add_patch(rect)
 
         if plot_box:
             for peak in nms_boxes[i]:
@@ -134,7 +145,12 @@ def main():
     imgs, labels = load_from_cxi( filename, idx )
 
     net = Peaknet()
-    net.loadDNWeights()
+    if len(sys.argv) == 3:
+        cfgPath = sys.argv[1]
+        weightPath = sys.argv[2]
+        net.loadWeights( cfgPath, weightPath )
+    else:
+        net.loadDNWeights()
     net.model.eval()
     net.model.cuda()
 

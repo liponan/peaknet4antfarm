@@ -31,20 +31,21 @@ def updateGrad( model, grad ):
 
 
 
-def optimize( model, adagrad=False ):
+def optimize( model, adagrad=False, lr=0.001 ):
     # lr = learning_rate/batch_size
     if adagrad:
-        lr = 0.0005
+        #lr = 0.0005
         decay = 0.005
         optimizer = optim.Adagrad(model.parameters(), lr = lr, weight_decay=decay)
     else:
-        lr = 0.0001
+        #lr = 0.001
         momentum = 0.9
-        decay = 0.05
+        decay = 0.0005
         optimizer = optim.SGD(model.parameters(), lr=lr,
                             momentum=momentum, dampening=0,
                             weight_decay=decay)
     optimizer.step()
+
 
 
 def adjust_learning_rate(optimizer, batch):
@@ -65,13 +66,6 @@ def adjust_learning_rate(optimizer, batch):
 def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, writer=None ):
     debug = True
     
-
-    # global processed_batches
-    # t0 = time.time()
-    # if ngpus > 1:
-    #     cur_model = model.module
-    # else:
-    #     cur_model = model
     train_loader = torch.utils.data.DataLoader(
         peaknet_dataset.listDataset(imgs, labels,
                         shape=(imgs.shape[2], imgs.shape[3]),
@@ -103,7 +97,7 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
         # processed_batches = processed_batches + 1
         #if (batch_idx+1) % dot_interval == 0:
         #    sys.stdout.write('.')
-
+        print("timgs type", data.type())
         if use_cuda:
             data = data.cuda()
             target= target.cuda()
@@ -115,7 +109,9 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
         t5 = time.time()
         #print( "after", data )
         #output = model( data )
-        output, _= model( data.float() )
+        output, _= model( data )
+
+
         #print(output)
         t6 = time.time()
         region_loss.seen = region_loss.seen + data.data.size(0)
@@ -126,8 +122,8 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
             print("label length", len(target))
             print("label[0] length", len(target[0]))
         loss = region_loss(output, target)
-        '''
-        except:
+      
+        if False:
             print("label length", len(target))
             print("label[0]", len(target[0]))
             print("label[0]", target[0])
@@ -135,7 +131,7 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
             #print("label[1]", target[1].shape)
             #print("label[2]", target[2].shape)
             raise "something wrong with the labels?"
-        '''
+      
         t7 = time.time()
         loss.backward()
         t8 = time.time()
@@ -174,6 +170,9 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
     #     cur_model.seen = (epoch + 1) * len(train_loader.dataset)
     #     cur_model.save_weights('%s/%06d.weights' % (backupdir, epoch+1))
 
+
+
+'''
 def test(epoch):
     def truths_length(truths):
         for i in range(50):
@@ -324,3 +323,4 @@ def train_peaknet( model, trainer, imgs, labels, tmpdir ):
     # for epoch in range(init_epoch, max_epochs):
     #     train(epoch)
         # test(epoch)
+'''

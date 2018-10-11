@@ -12,12 +12,15 @@ import peaknet_train
 from darknet_utils import get_region_boxes, nms
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
+from demo_predict import load_from_cxi, predict
 
 
 #dnmodel = dn.Darknet( "../pytorch-yolo-v3/cfg/newpeaksv10-asic.cfg" )
 #dnmodel.load_weights( "../pytorch-yolo-v3/weights/newpeaksv10_40000.weights" )
 
 filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
+
+
 
 
 ##########
@@ -36,7 +39,7 @@ f.close()
 print('img:', h, w)
 
 batch_size = 15
-nEpoch = 20
+nEpoch = 100
 
 ###########
 
@@ -57,7 +60,17 @@ print("model init time", t4-t3)
 t_init = time.time()
 writer = SummaryWriter()
 
+filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
+idx = 468
+imgs, labels = load_from_cxi( filename, idx )
+
+
 pn.model.save_weights( "results/cxic0415_0091_init.weights" )
+print("before", next( pn.model.parameters())[-1,0,:,:])
+model0 = pn.model
+model0_dict = dict( model0.named_parameters() )
+pn.model.eval()
+nms_boxes = predict( pn, imgs, conf_thresh=0.15, nms_thresh=0.1, printPeaks=True )
 
 for ep in range(nEpoch): 
     print("============= EPOCH %d ==========" % (ep+1))
@@ -70,6 +83,8 @@ for ep in range(nEpoch):
 	t1 = time.time()
         f = h5py.File(filename, 'r')
         img = f["entry_1/data_1/data"][t,:,:]
+        mask = f["entry_1/data_1/mask"][t,:,:]
+        img = img * (1-mask)
         x_label = f['entry_1/result_1/peakXPosRaw'][t,:]
         y_label = f['entry_1/result_1/peakYPosRaw'][t,:]
         f.close()
@@ -111,15 +126,32 @@ for ep in range(nEpoch):
 	    print("batch_imgs shape", batch_imgs.shape)
 	    print("batch_labels shape", len(batch_labels), len(batch_labels[0]), batch_labels[0][0].shape)
 	    pn.train( batch_imgs, batch_labels, batch_size=32*3, use_cuda=True, writer=writer )
-	    pn.optimize(adagrad=True)
-	    #peaknet_train.train_batch( pn.model, batch_imgs, batch_labels, batch_size=32*3, use_cuda=True )
-	    #peaknet_train.optimize()
+	    pn.optimize(adagrad=False, lr=0.0001 )
+	    
 	    t5 = time.time()
 	    print("time per event", 1.0*(t5-t0)/batch_size)
-            pn.model.save_weights( "results/cxic0415_0091_ep"+str(ep)+".weights" )
+
+            pn.model.eval()
+            nms_boxes = predict( pn, imgs, conf_thresh=0.15, nms_thresh=0.1, printPeaks=True )
+            #model = pn.model.cpu()
+            #print("after", next( pn.model.parameters())[-1,0,:,:] )
+            
+            #model_dict2 = dict( model2.named_parameters() )
+    pn.model.save_weights( "results/cxic0415_0091_ep"+str(ep)+".weights" )
+            #model.load_weights( "results/cxic0415_0091_ep"+str(ep)+".weights" )
+            #model_dict = dict( model.named_parameters() )
+            #for key, value in model_dict.items():
+            #    #model_dict[key].grad.data = grad[key].data
+            #     print(key)
+            #     print("original",model_dict[key].sum().data)
+            #     #print()
+            #     print("updated",model0_dict[key].sum().data)
+            #     #print()
+
+
             #print("before", next( pn.model.parameters() ).grad[0,:,:] )
-            pn.updateGrad( pn.getGrad() )
-            print("after", next( pn.model.parameters() ).grad[0,:,:] )
+            #pn.updateGrad( pn.getGrad() )
+            #print("after", next( pn.model.parameters() ).grad[0,:,:] )
 
 t_end = time.time()            
 print("total time elapsed", t_end-t_init)
