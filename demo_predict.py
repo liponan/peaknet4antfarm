@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 import torch as t
 import numpy as np
@@ -8,6 +9,9 @@ import peaknet_train
 from darknet_utils import get_region_boxes, nms
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
+import matplotlib.pyplot as plt
+import matplotlib.patches as pat
+import matplotlib.cm as cm
 
 def load_from_cxi( filename, idx ):
     f = h5py.File(filename, 'r')
@@ -42,7 +46,9 @@ def load_from_cxi( filename, idx ):
 
 def predict( net, imgs, conf_thresh=0.2, nms_thresh=0.45, printPeaks=False):
 
-    timgs = t.zeros( (32, 1, 192, 392) )
+    h = 192
+    w = 392
+    timgs = t.zeros( (32, 1, h, w) )
     timgs[:,:,4:189,2:390] = t.from_numpy( imgs/15000.0 )
 
     timgs = timgs.cuda()
@@ -100,19 +106,21 @@ def visualize( imgs, labels, nms_boxes, plot_label=True, plot_box=True,
             continue
         fig, ax = plt.subplots(1)
         img = imgs[0,i,:,:]
+        #h, w = img.shape
+        h, w = 192, 392
 
-        im0 = plt.imshow(img.reshape(h,w), vmin=0, vmax=1, cmap=cm.gray)
+        im0 = plt.imshow(img, vmin=0, vmax=15000, cmap=cm.gray)
 
         if plot_box:
             for peak in nms_boxes[i]:
-                x = w * ( peak[0]-0.5*peak[2] ) + 2
-                y = h * ( peak[1]-0.5*peak[3] ) + 4
+                x = w * ( peak[0]-0.5*peak[2] ) - 2
+                y = h * ( peak[1]-0.5*peak[3] ) - 4
                 ww = w * peak[2]
                 hh = h * peak[3]
                 rect = pat.Rectangle( (x, y), ww, hh, color="m", fill=False, linewidth=1 )
                 ax.add_patch(rect)
 
-        filename = "{}_{}.png".format(str(eventIdx).zfill(6), str(i).zfill(2))
+        filename = "asic_{}.png".format(str(i).zfill(2))
         fig.set_size_inches(10, 5)
         plt.savefig( os.path.join(output_path, filename), bbox_inces='tight', dpi=300)
 
@@ -120,7 +128,7 @@ def visualize( imgs, labels, nms_boxes, plot_label=True, plot_box=True,
 def main():
 
     filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
-    idx = 7
+    idx = 468
     imgs, labels = load_from_cxi( filename, idx )
 
     net = Peaknet()
@@ -128,7 +136,7 @@ def main():
     net.model.eval()
     net.model.cuda()
 
-    nms_boxes = predict( net, imgs, conf_thresh=0.1, nms_thresh=0.45, printPeaks=True )
+    nms_boxes = predict( net, imgs, conf_thresh=0.15, nms_thresh=0.45, printPeaks=True )
 
     visualize( imgs, labels, nms_boxes )
 
