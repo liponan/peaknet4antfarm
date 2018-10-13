@@ -60,6 +60,7 @@ def predict( net, imgs, conf_thresh=0.2, nms_thresh=0.45, printPeaks=False):
 
     output, _ = net.model(timgs)
     output = output.data
+    print(output[0,0,:,:])
 
     t4 = time.time()
 

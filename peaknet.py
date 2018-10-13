@@ -19,7 +19,6 @@ workPath = "../pytorch-yolo2/"
 cwd = os.path.abspath(os.path.dirname(__file__))
 
 
-
 class Peaknet():
 
     def __init__(self):
@@ -37,13 +36,15 @@ class Peaknet():
         #self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv9_40000.weights") )
         self.model = Darknet( os.path.join( cwd, workPath, 'cfg/newpeaksv10-asic.cfg' ) )
         #self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv10_40000.weights") )
-        self.model.load_weights( os.path.join( cwd, workPath, "../darknet/backup/newpeaksv10_500.weights") )
+        self.model.load_weights( os.path.join( cwd, workPath, "../darknet/backup/newpeaksv10_100.weights") )
 
 
     def train( self, imgs, labels, box_size = 7, batch_size=1, use_cuda=True, writer=None ):
         """
-        0: peak
-        1: streak
+        labels:
+            class, s, r, c, h, w
+                0: peak
+                1: streak
         """
         peaknet_train.train_batch( self.model, imgs, labels, batch_size=batch_size, box_size=box_size, 
                                     use_cuda=use_cuda, writer=writer)        
@@ -72,8 +73,13 @@ class Peaknet():
     def updateGrad( self, grads ):
         peaknet_train.updateGrad( self.model, grads )
 
-    def optimize( self, adagrad=False, lr=0.01 ):
-        peaknet_train.optimize( self.model, adagrad=adagrad, lr=lr )
+    def optimizer( self, adagrad=False, lr=0.001 ):
+        optimizer = peaknet_train.optimizer( self.model, adagrad=adagrad, lr=lr )
+        return optimizer     
+
+
+    def optimize( self, optimizer ):
+        peaknet_train.optimize( self.model, optimizer )
 
 
     # def optimize( self, model ):

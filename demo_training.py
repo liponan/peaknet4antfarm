@@ -38,7 +38,7 @@ _, h, w = imgs.shape
 f.close()
 print('img:', h, w)
 
-batch_size = 15
+batch_size = 3
 nEpoch = 100
 
 ###########
@@ -57,8 +57,14 @@ print("model init time", t4-t3)
 
 ###########
 
+#algo = "ada"
+set_algo = "ada"
+set_lr = 0.0005
+set_comment = "train_100"
+
+
 t_init = time.time()
-writer = SummaryWriter()
+writer = SummaryWriter( "runs/" + set_algo + '_' + str(set_lr) + '_' + set_comment )
 
 filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
 idx = 468
@@ -72,14 +78,16 @@ model0_dict = dict( model0.named_parameters() )
 pn.model.eval()
 nms_boxes = predict( pn, imgs, conf_thresh=0.15, nms_thresh=0.1, printPeaks=True )
 
+
+
 for ep in range(nEpoch): 
     print("============= EPOCH %d ==========" % (ep+1))
-    for t in range(dataset_hits):
+    for t in range(dataset_hits): #range(468,469):
         if t % batch_size == 0:
             batch_imgs = None
             batch_labels = []
             t0 = time.time()
-        print("img", t)
+        print("ep", ep+1, "img", t)
 	t1 = time.time()
         f = h5py.File(filename, 'r')
         img = f["entry_1/data_1/data"][t,:,:]
@@ -92,9 +100,12 @@ for ep in range(nEpoch):
         imgs = np.reshape( img, (8, 185, 4, 194*2) )
         imgs = np.transpose( imgs, (0, 2, 1, 3) )
         imgs = np.reshape( imgs, (1, 32, 185, 388) )
+        cls = np.zeros( (nPeaks[t],) )
         s = np.zeros( (nPeaks[t],) )
         r = np.zeros( (nPeaks[t],) )
         c = np.zeros( (nPeaks[t],) )
+        bh = 7*np.ones( (nPeaks[t],) )
+        bw = 7*np.ones( (nPeaks[t],) )
         for u in range(nPeaks[t]):
             my_s = (int(y_label[u])/185)*4 + (int(x_label[u])/388)
 	    my_r = y_label[u] % 185
@@ -102,16 +113,16 @@ for ep in range(nEpoch):
 	    s[u] = my_s
 	    r[u] = my_r
 	    c[u] = my_c
-        labels = (s, r, c)
+        labels = (cls, s, r, c, bh, bw)
         #print(labels)
-        if t % batch_size == 0:
+        if t % batch_size == 0 or t ==468:
             batch_imgs = imgs
         else:
             batch_imgs = np.concatenate( (batch_imgs, imgs), axis=0 )
         batch_labels.append( labels )
         t2 = time.time()
         #print("data proceessing time", t2-t1)
-        if t % batch_size == (batch_size-1) or t == (dataset_hits-1):
+        if t % batch_size == (batch_size-1) or t == (dataset_hits-1) or t == 468:
 	    '''
 	    t3 = time.time()
 	    pn = Peaknet()
@@ -123,16 +134,17 @@ for ep in range(nEpoch):
 	    t4 = time.time()
 	    print("model init time", t4-t3)
 	    '''
-	    print("batch_imgs shape", batch_imgs.shape)
-	    print("batch_labels shape", len(batch_labels), len(batch_labels[0]), batch_labels[0][0].shape)
+	    #print("batch_imgs shape", batch_imgs.shape)
+	    #print("batch_labels shape", len(batch_labels), len(batch_labels[0]), batch_labels[0][0].shape)
+            optimizer = pn.optimizer(adagrad=set_algo=="ada", lr=set_lr )
 	    pn.train( batch_imgs, batch_labels, batch_size=32*3, use_cuda=True, writer=writer )
-	    pn.optimize(adagrad=False, lr=0.0001 )
+	    pn.optimize( optimizer )
 	    
 	    t5 = time.time()
 	    print("time per event", 1.0*(t5-t0)/batch_size)
 
-            pn.model.eval()
-            nms_boxes = predict( pn, imgs, conf_thresh=0.15, nms_thresh=0.1, printPeaks=True )
+            #pn.model.eval()
+            #nms_boxes = predict( pn, imgs, conf_thresh=0.15, nms_thresh=0.1, printPeaks=True )
             #model = pn.model.cpu()
             #print("after", next( pn.model.parameters())[-1,0,:,:] )
             

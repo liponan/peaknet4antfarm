@@ -74,10 +74,12 @@ class listDataset(Dataset):
             ind1 = index / m
             ind2 = index % m
 
-            img = self.imgs[ind1,ind2,:,:]
-            timg = torch.zeros( img.shape )
-            timg = torch.from_numpy( img )
-            timg = timg.view(-1, h, w )
+            img = self.imgs[ind1,ind2,:,:] / 15000.0
+            #print( img.shape )
+            #timg = torch.zeros( img.shape )
+            timg = torch.zeros( (192,392) )
+            timg[4:189,2:390] = torch.from_numpy( img )
+            timg = timg.view(-1, 192, 392 )
             cls = np.reshape( self.labels[ind1][0][ self.labels[ind1][1]==ind2 ], (-1,1) )
             r = np.reshape( self.labels[ind1][2][ self.labels[ind1][1]==ind2 ], (-1,1) )
             c = np.reshape( self.labels[ind1][3][ self.labels[ind1][1]==ind2 ], (-1,1) )
@@ -87,7 +89,7 @@ class listDataset(Dataset):
             bh[ bh == 0 ] = self.box_size
             bw[ bw == 0 ] = self.box_size
             try:
-                tmp = np.concatenate( cls, 1.0*c/w, 1.0*r/h, 1.0*bw/w, 1.0*bh/h), axis=1 )
+                tmp = np.concatenate( (cls, 1.0*(c+2)/392.0, 1.0*(r+4)/192.0, 1.0*bw/392.0, 1.0*bh/192.0), axis=1 )
                 tmp = torch.from_numpy(tmp)
             except:
                 tmp = torch.zeros(1,5)
