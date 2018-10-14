@@ -23,6 +23,7 @@ class Peaknet():
 
     def __init__(self):
         self.model = None
+        self.optimizer = None
 
     def loadWeights( self, cfgFile, weightFile ):
         self.model = Darknet( cfgFile )
@@ -78,13 +79,11 @@ class Peaknet():
     def updateGrad( self, grads ):
         peaknet_train.updateGrad( self.model, grads )
 
-    def optimizer( self, adagrad=False, lr=0.001 ):
-        optimizer = peaknet_train.optimizer( self.model, adagrad=adagrad, lr=lr )
-        return optimizer     
+    def set_optimizer( self, adagrad=False, lr=0.001 ):
+        self.optimizer = peaknet_train.optimizer( self.model, adagrad=adagrad, lr=lr )
 
-
-    def optimize( self, optimizer ):
-        peaknet_train.optimize( self.model, optimizer )
+    def optimize( self ):
+        peaknet_train.optimize( self.model, self.optimizer )
 
 
     # def optimize( self, model ):
