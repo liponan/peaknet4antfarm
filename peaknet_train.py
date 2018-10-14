@@ -4,6 +4,7 @@ import sys
 import time
 import torch
 import torch.nn as nn
+import torch.nn.init
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
@@ -20,6 +21,14 @@ from region_loss import RegionLoss
 from darknet_utils import get_region_boxes, nms
 from darknet import Darknet
 from models.tiny_yolo import TinyYoloNet
+
+def init_model( model ):
+    ind = -2
+    for block in model.blocks:
+        ind = ind + 1
+        if block["type"] == "convolutional":
+            #print( model.models[ind] )
+            torch.nn.init.kaiming_normal( model.models[ind][0].weight )
 
 def updateGrad( model, grad ):
     #with torch.no_grad():
@@ -147,9 +156,10 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
         #optimizer.step()
         t9 = time.time()
         if writer != None:
-            writer.add_scalar('loss', loss, model.seen) 
+            #writer.add_scalars('loss/recall', {"loss":loss, "recall":recall}, model.seen) 
+            writer.add_scalar('loss', loss, model.seen)
 	    writer.add_scalar('recall', recall, model.seen) 	
-            writer.export_scalars_to_json("./all_scalars.json")
+            #writer.export_scalars_to_json("./all_scalars.json")
         
         if False and batch_idx > 1:
             avg_time[0] = avg_time[0] + (t2-t1)

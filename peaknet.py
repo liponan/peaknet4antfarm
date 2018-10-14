@@ -49,6 +49,11 @@ class Peaknet():
         peaknet_train.train_batch( self.model, imgs, labels, batch_size=batch_size, box_size=box_size, 
                                     use_cuda=use_cuda, writer=writer)        
 
+    def init_model( self, cfgFile=os.path.join( cwd, workPath, 'cfg/newpeaksv10-asic.cfg' ) ):
+        self.model = Darknet( cfgFile )
+        peaknet_train.init_model( self.model )
+
+    
     def model( self ):
         return self.model
 
