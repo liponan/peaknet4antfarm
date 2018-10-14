@@ -14,16 +14,20 @@ from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 from demo_predict import load_from_cxi, predict
 
+#######################
 
-#dnmodel = dn.Darknet( "../pytorch-yolo-v3/cfg/newpeaksv10-asic.cfg" )
-#dnmodel.load_weights( "../pytorch-yolo-v3/weights/newpeaksv10_40000.weights" )
+set_algo = "ada"
+set_lr = 0.0001
+set_comment = "kaiming"
+project = "cxic0415_0092"
 
-filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
+t_init = time.time()
+writer = SummaryWriter( "runs/" + project + '_' + set_algo + '_' + str(set_lr) + '_' + set_comment )
 
+filename = "/reg/neh/home/liponan/data/cxic0415/r0092/cxic0415_0092.cxi.backup"
 
+########################
 
-
-##########
 
 print(filename)
 f = h5py.File(filename, 'r')
@@ -39,13 +43,14 @@ f.close()
 print('img:', h, w)
 
 batch_size = 3
-nEpoch = 100
+nEpoch = 10
 
 ###########
 
 t3 = time.time()
 pn = Peaknet()
-pn.loadDNWeights()
+pn.init_model()
+#pn.loadDNWeights()
 pn.model.train()
 #print("training?", pn.model.training)
 #pn.model.print_network()
@@ -58,25 +63,14 @@ print("model init time", t4-t3)
 ###########
 
 #algo = "ada"
-set_algo = "ada"
-set_lr = 0.0005
-set_comment = "train_100"
 
 
-t_init = time.time()
-writer = SummaryWriter( "runs/" + set_algo + '_' + str(set_lr) + '_' + set_comment )
-
-filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
-idx = 468
-imgs, labels = load_from_cxi( filename, idx )
-
-
-pn.model.save_weights( "results/cxic0415_0091_init.weights" )
-print("before", next( pn.model.parameters())[-1,0,:,:])
+pn.model.save_weights( "results/weights/" + project + "_init.weights" )
+#print("before", next( pn.model.parameters())[-1,0,:,:])
 model0 = pn.model
-model0_dict = dict( model0.named_parameters() )
-pn.model.eval()
-nms_boxes = predict( pn, imgs, conf_thresh=0.15, nms_thresh=0.1, printPeaks=True )
+#model0_dict = dict( model0.named_parameters() )
+#pn.model.eval()
+#nms_boxes = predict( pn, imgs, conf_thresh=0.15, nms_thresh=0.1, printPeaks=True )
 
 
 
@@ -149,7 +143,7 @@ for ep in range(nEpoch):
             #print("after", next( pn.model.parameters())[-1,0,:,:] )
             
             #model_dict2 = dict( model2.named_parameters() )
-    pn.model.save_weights( "results/cxic0415_0091_ep"+str(ep)+".weights" )
+    pn.model.save_weights( "results/weights/" + project + "_ep"+str(ep+1)+".weights" )
             #model.load_weights( "results/cxic0415_0091_ep"+str(ep)+".weights" )
             #model_dict = dict( model.named_parameters() )
             #for key, value in model_dict.items():
