@@ -13,6 +13,7 @@ from peaknet_test import test_batch
 # from train import train_peaknet
 # from preprocess import prep_image, inp_to_image
 # from util import loss, loadLabels, IOU
+from tensorboardX import SummaryWriter
 
 # workPath = "/reg/neh/home/liponan/ai/peaknet4antfarm/"
 workPath = "../pytorch-yolo2/"
@@ -21,15 +22,26 @@ workPath = "../pytorch-yolo2/"
 cwd = os.path.abspath(os.path.dirname(__file__))
 
 
-
 class Peaknet():
 
     def __init__(self):
         self.model = None
+        self.optimizer = None
+        self.writer = None
+
+
+    def set_writer(self, project_name=None, parameters={}):
+        if project_name == None:
+            self.writer = SummaryWriter()
+        else:
+            self.writer = SummaryWriter( project_name )
+        self.writer.add_custom_scalars( parameters )
+
 
     def loadWeights( self, cfgFile, weightFile ):
         self.model = Darknet( cfgFile )
         self.model.load_weights( weightFile )
+
 
     def loadDNWeights( self ):
         # self.model = Darknet(workPath + 'cfg/newpeaksv5.cfg')
@@ -39,14 +51,16 @@ class Peaknet():
         #self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv9_40000.weights") )
         self.model = Darknet( os.path.join( cwd, workPath, 'cfg/newpeaksv10-asic.cfg' ) )
         #self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv10_40000.weights") )
-        self.model.load_weights( os.path.join( cwd, workPath, "../darknet/backup/newpeaksv10_500.weights") )
+        self.model.load_weights( os.path.join( cwd, workPath, "../darknet/backup/newpeaksv10_100.weights") )
 
     def train( self, imgs, labels, box_size = 7, batch_size=1, use_cuda=True, writer=None ):
         peaknet_train.train_batch( self.model, imgs, labels, batch_size=batch_size,
                                 box_size=box_size, use_cuda=use_cuda, writer=writer)
 
+
     def model( self ):
         return self.model
+
 
     def getGrad( self ):
         grad = {}
@@ -68,13 +82,14 @@ class Peaknet():
     def updateModel( self, model ):
         self.model = model
 
+
     def updateGrad( self, grads ):
         peaknet_train.updateGrad( self.model, grads )
 
-    def optimize( self, adagrad=False ):
-        peaknet_train.optimize( self.model, adagrad=adagrad )
+
+    def set_optimizer( self, adagrad=False, lr=0.001 ):
+        self.optimizer = peaknet_train.optimizer( self.model, adagrad=adagrad, lr=lr )
 
 
-    # def optimize( self, model ):
-        # for param in self.model.parameters():
-        #     param.grad.data = model.
+    def optimize( self ):
+        peaknet_train.optimize( self.model, self.optimizer )

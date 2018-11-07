@@ -12,18 +12,30 @@ import peaknet_train
 from darknet_utils import get_region_boxes, nms
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
+from demo_predict import load_from_cxi, predict
+
+#######################
+
+set_algo = "ada"
+set_lr = 0.001
+set_comment = "kaiming"
+project = "cxic0415_0093"
+#project = "cxitut13_0010"
+
+t_init = time.time()
+writer = SummaryWriter( "runs/" + project + '_' + set_algo + '_' + str(set_lr) + '_' + set_comment )
+
+filename_train = "/reg/neh/home/liponan/data/cxic0415/r0093/cxic0415_0093.cxi.backup"
+filename_valid = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
 
 
-#dnmodel = dn.Darknet( "../pytorch-yolo-v3/cfg/newpeaksv10-asic.cfg" )
-#dnmodel.load_weights( "../pytorch-yolo-v3/weights/newpeaksv10_40000.weights" )
+#filename = "/reg/neh/home/liponan/data/cxitut13/r0010/cxitut13_0010.cxi.backup"
 
-filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
+########################
 
 
-##########
-
-print(filename)
-f = h5py.File(filename, 'r')
+print(filename_train)
+f = h5py.File(filename_train, 'r')
 nPeaks = f["entry_1/result_1/nPeaks"].value
 dataset_hits = len(nPeaks)
 print('hits: ' + str(dataset_hits))
@@ -35,51 +47,54 @@ _, h, w = imgs.shape
 f.close()
 print('img:', h, w)
 
-batch_size = 15
-nEpoch = 20
+batch_size = 3
+nEpoch = 10
 
 ###########
 
 t3 = time.time()
 pn = Peaknet()
-pn.loadDNWeights()
+pn.init_model()
 pn.model.train()
-#print("training?", pn.model.training)
-#pn.model.print_network()
 pn.model.cuda()
 t4 = time.time()
 print("model init time", t4-t3)
 
 
 
-###########
-
-t_init = time.time()
-writer = SummaryWriter()
-
-pn.model.save_weights( "results/cxic0415_0091_init.weights" )
+pn.model.save_weights( "results/weights/" + project + "_init.weights" )
 
 for ep in range(nEpoch): 
+
     print("============= EPOCH %d ==========" % (ep+1))
-    for t in range(dataset_hits):
+
+    for t in range(dataset_hits): 
+
         if t % batch_size == 0:
             batch_imgs = None
             batch_labels = []
             t0 = time.time()
-        print("img", t)
+
+        print("ep", ep+1, "img", t)
 	t1 = time.time()
+
         f = h5py.File(filename, 'r')
         img = f["entry_1/data_1/data"][t,:,:]
+        mask = f["entry_1/data_1/mask"][t,:,:]
+        img = img * (1-mask)
         x_label = f['entry_1/result_1/peakXPosRaw'][t,:]
         y_label = f['entry_1/result_1/peakYPosRaw'][t,:]
         f.close()
-        #print("img shape", img.shape)
+    
         imgs = np.reshape( img, (8, 185, 4, 194*2) )
         imgs = np.transpose( imgs, (0, 2, 1, 3) )
         imgs = np.reshape( imgs, (1, 32, 185, 388) )
+        cls = np.zeros( (nPeaks[t],) )
         s = np.zeros( (nPeaks[t],) )
         r = np.zeros( (nPeaks[t],) )
         c = np.zeros( (nPeaks[t],) )
+        bh = 7*np.ones( (nPeaks[t],) )
+        bw = 7*np.ones( (nPeaks[t],) )
         for u in range(nPeaks[t]):
             my_s = (int(y_label[u])/185)*4 + (int(x_label[u])/388)
 	    my_r = y_label[u] % 185
@@ -87,7 +102,7 @@ for ep in range(nEpoch):
 	    s[u] = my_s
 	    r[u] = my_r
 	    c[u] = my_c
-        labels = (s, r, c)
+        labels = (cls, s, r, c, bh, bw)
         #print(labels)
         if t % batch_size == 0:
             batch_imgs = imgs
@@ -97,29 +112,32 @@ for ep in range(nEpoch):
         t2 = time.time()
         #print("data proceessing time", t2-t1)
         if t % batch_size == (batch_size-1) or t == (dataset_hits-1):
-	    '''
-	    t3 = time.time()
-	    pn = Peaknet()
-	    pn.loadDNWeights()
-	    pn.model.train()
-	    #print("training?", pn.model.training)
-	    #pn.model.print_network()
-	    pn.model.cuda()
-	    t4 = time.time()
-	    print("model init time", t4-t3)
-	    '''
-	    print("batch_imgs shape", batch_imgs.shape)
-	    print("batch_labels shape", len(batch_labels), len(batch_labels[0]), batch_labels[0][0].shape)
-	    pn.train( batch_imgs, batch_labels, batch_size=32*3, use_cuda=True, writer=writer )
-	    pn.optimize(adagrad=True)
-	    #peaknet_train.train_batch( pn.model, batch_imgs, batch_labels, batch_size=32*3, use_cuda=True )
-	    #peaknet_train.optimize()
+	    
+            pn.set_optimizer(adagrad=set_algo=="ada", lr=set_lr )
+	    pn.train( batch_imgs, batch_labels, batch_size=32*3, use_cuda=True )
+	    pn.optimize( optimizer )
+	    
 	    t5 = time.time()
 	    print("time per event", 1.0*(t5-t0)/batch_size)
-            pn.model.save_weights( "results/cxic0415_0091_ep"+str(ep)+".weights" )
+
+    pn.model.save_weights( "results/weights/" + project + "_ep"+str(ep+1)+".weights" )
+
+    img, label = load_from_cxi( filename_valid, idx_valid )
+    pn.valid( 
+            #model.load_weights( "results/cxic0415_0091_ep"+str(ep)+".weights" )
+            #model_dict = dict( model.named_parameters() )
+            #for key, value in model_dict.items():
+            #    #model_dict[key].grad.data = grad[key].data
+            #     print(key)
+            #     print("original",model_dict[key].sum().data)
+            #     #print()
+            #     print("updated",model0_dict[key].sum().data)
+            #     #print()
+
+
             #print("before", next( pn.model.parameters() ).grad[0,:,:] )
-            pn.updateGrad( pn.getGrad() )
-            print("after", next( pn.model.parameters() ).grad[0,:,:] )
+            #pn.updateGrad( pn.getGrad() )
+            #print("after", next( pn.model.parameters() ).grad[0,:,:] )
 
 t_end = time.time()            
 print("total time elapsed", t_end-t_init)

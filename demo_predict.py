@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 import torch as t
 import numpy as np
@@ -8,8 +9,11 @@ import peaknet_train
 from darknet_utils import get_region_boxes, nms
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
+import matplotlib.pyplot as plt
+import matplotlib.patches as pat
+import matplotlib.cm as cm
 
-def load_from_cxi( filename, idx ):
+def load_from_cxi( filename, idx, box_size=7 ):
     f = h5py.File(filename, 'r')
     nPeaks = f["entry_1/result_1/nPeaks"].value
     dataset_hits = len(nPeaks)
@@ -17,6 +21,8 @@ def load_from_cxi( filename, idx ):
     dataset_peaks = np.sum(nPeaks)
     print('peaks: ' + str(dataset_peaks))
     img = f["entry_1/data_1/data"][idx,:,:]
+    mask = f["entry_1/data_1/mask"][idx,:,:]
+    img = img * (1-mask)
     x_label = f['entry_1/result_1/peakXPosRaw'][idx,:]
     y_label = f['entry_1/result_1/peakYPosRaw'][idx,:]
     f.close()
@@ -26,9 +32,12 @@ def load_from_cxi( filename, idx ):
     imgs = np.reshape( imgs, (1, 32, 185, 388) )
     n, m, h, w = imgs.shape
 
+    cls = np.zeros( (nPeaks[idx],) )
     s = np.zeros( (nPeaks[idx],) )
     r = np.zeros( (nPeaks[idx],) )
     c = np.zeros( (nPeaks[idx],) )
+    ww = np.zeros( (nPeaks[idx],) )
+    hh = np.zeros( (nPeaks[idx],) )
     for u in range(nPeaks[idx]):
         my_s = (int(y_label[u])/185)*4 + (int(x_label[u])/388)
         my_r = y_label[u] % 185
@@ -36,13 +45,17 @@ def load_from_cxi( filename, idx ):
         s[u] = my_s
         r[u] = my_r
         c[u] = my_c
-        labels = (s, r, c)
+        hh[u] = box_size
+        ww[u] = box_size
+    labels = (cls, s, r, c, hh, ww)
 
     return imgs, labels
 
 def predict( net, imgs, conf_thresh=0.2, nms_thresh=0.45, printPeaks=False):
 
-    timgs = t.zeros( (32, 1, 192, 392) )
+    h = 192
+    w = 392
+    timgs = t.zeros( (32, 1, h, w) )
     timgs[:,:,4:189,2:390] = t.from_numpy( imgs/15000.0 )
 
     timgs = timgs.cuda()
@@ -52,6 +65,7 @@ def predict( net, imgs, conf_thresh=0.2, nms_thresh=0.45, printPeaks=False):
 
     output, _ = net.model(timgs)
     output = output.data
+    print(output[0,0,:,:])
 
     t4 = time.time()
 
@@ -88,7 +102,7 @@ def predict( net, imgs, conf_thresh=0.2, nms_thresh=0.45, printPeaks=False):
 
 
 def visualize( imgs, labels, nms_boxes, plot_label=True, plot_box=True,
-                output_path="results/peaks"):
+                output_path="results/peaks", box_size=7):
     if os.path.isdir( output_path ):
         pass
     else:
@@ -100,35 +114,53 @@ def visualize( imgs, labels, nms_boxes, plot_label=True, plot_box=True,
             continue
         fig, ax = plt.subplots(1)
         img = imgs[0,i,:,:]
+        #h, w = img.shape
+        h, w = 192, 392
 
-        im0 = plt.imshow(img.reshape(h,w), vmin=0, vmax=1, cmap=cm.gray)
+        im0 = plt.imshow(img, vmin=0, vmax=15000, cmap=cm.gray)
+
+        if plot_label:
+            my_r = labels[2][ labels[1] == i ]
+            my_c = labels[3][ labels[1] == i ]
+            my_h = labels[4][ labels[1] == i ]
+            my_w = labels[5][ labels[1] == i ]
+            for j in range(len(my_r)):
+                x = my_c[j] - my_w[i]/2.0
+                y = my_r[j] - my_h[i]/2.0
+                ww = box_size
+                hh = box_size
+                rect = pat.Rectangle( (x, y), ww, hh, color="c", fill=False, linewidth=1 )
+                ax.add_patch(rect)
 
         if plot_box:
             for peak in nms_boxes[i]:
-                x = w * ( peak[0]-0.5*peak[2] ) + 2
-                y = h * ( peak[1]-0.5*peak[3] ) + 4
+                x = w * ( peak[0]-0.5*peak[2] ) - 2
+                y = h * ( peak[1]-0.5*peak[3] ) - 4
                 ww = w * peak[2]
                 hh = h * peak[3]
                 rect = pat.Rectangle( (x, y), ww, hh, color="m", fill=False, linewidth=1 )
                 ax.add_patch(rect)
 
-        filename = "{}_{}.png".format(str(eventIdx).zfill(6), str(i).zfill(2))
+        filename = "asic_{}.png".format(str(i).zfill(2))
         fig.set_size_inches(10, 5)
         plt.savefig( os.path.join(output_path, filename), bbox_inces='tight', dpi=300)
 
 
-def main():
+def main( filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup", idx=468):
 
-    filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
-    idx = 7
     imgs, labels = load_from_cxi( filename, idx )
 
     net = Peaknet()
-    net.loadDNWeights()
+    if len(sys.argv) == 3:
+        cfgPath = sys.argv[1]
+        weightPath = sys.argv[2]
+        net.loadWeights( cfgPath, weightPath )
+    else:
+        net.loadDNWeights()
     net.model.eval()
     net.model.cuda()
 
-    nms_boxes = predict( net, imgs, conf_thresh=0.1, nms_thresh=0.45, printPeaks=True )
+    nms_boxes = predict( net, imgs, conf_thresh=0.15, nms_thresh=0.1, printPeaks=True )
 
     visualize( imgs, labels, nms_boxes )
 

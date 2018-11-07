@@ -43,12 +43,10 @@ class listDataset(Dataset):
             r = np.reshape( self.labels[ind1][1][ self.labels[ind1][0]==ind2 ], (-1,1) )
             c = np.reshape( self.labels[ind1][2][ self.labels[ind1][0]==ind2 ], (-1,1) )
             label = torch.zeros(5*maxPeaks)
+            bh[ bh == 0 ] = self.box_size
+            bw[ bw == 0 ] = self.box_size
             try:
-                tmp = np.concatenate( (np.zeros( (r.shape[0],1) ),
-                                            1.0*c/w, 1.0*r/h,
-                                            1.0*self.box_size/w*np.ones( (r.shape[0],1) ),
-                                            1.0*self.box_size/h*np.ones( (r.shape[0],1) )),
-                                            axis=1 )
+                tmp = np.concatenate( (cls, 1.0*(c+2)/392.0, 1.0*(r+4)/192.0, 1.0*bw/392.0, 1.0*bh/192.0), axis=1 )
                 tmp = torch.from_numpy(tmp)
             except:
                 tmp = torch.zeros(1,5)
