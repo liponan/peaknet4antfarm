@@ -3,11 +3,11 @@ import os.path as osp
 import time
 import torch as t
 import sys
-# sys.path.append(os.path.abspath('../pytorch-yolo2'))
+sys.path.append(os.path.abspath('../pytorch-yolo2'))
 from darknet import Darknet
 import peaknet_train
 from peaknet_validate import validate_batch
-from peaknet_test import test_batch
+from peaknet_predict import predict_batch
 from tensorboardX import SummaryWriter
 
 # workPath = "/reg/neh/home/liponan/ai/peaknet4antfarm/"
@@ -65,12 +65,12 @@ class Peaknet():
             grad[key] = val.grad.cpu()
         return grad
 
-    def predict( self, imgs, box_size = 7 ):
+    def predict( self, imgs, box_size = 7, batch_size=1, use_cuda=True ):
         results = predict_batch( self.model, imgs, batch_size=batch_size,
                                 box_size=box_size, use_cuda=use_cuda)
         return results
 
-    def validate( self, imgs, golden_labels, box_size = 7 ):
+    def validate( self, imgs, golden_labels, box_size = 7, batch_size=1, use_cuda=True, writer=None ):
         results = validate_batch( self.model, imgs, labels, batch_size=batch_size,
                                 box_size=box_size, use_cuda=use_cuda, writer=writer)
         return results

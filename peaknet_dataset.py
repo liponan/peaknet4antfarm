@@ -33,12 +33,17 @@ class listDataset(Dataset):
         (n,m,h,w) = self.imgs.shape
         ind1 = index / m
         ind2 = index % m
+
+	new_h = 192
+        new_w = 392
+        timg = torch.zeros( ( 1, new_h, new_w) )
+
         img = self.imgs[ind1,ind2,:,:]
-        img = torch.from_numpy( img )
-        img = img.view(-1, h, w )
+        timg[:,4:189,2:390] = torch.from_numpy( img )
+        timg = timg.view(-1, new_h, new_w )
 
         if self.predict:
-            return img
+            return timg
         else:
             r = np.reshape( self.labels[ind1][1][ self.labels[ind1][0]==ind2 ], (-1,1) )
             c = np.reshape( self.labels[ind1][2][ self.labels[ind1][0]==ind2 ], (-1,1) )
@@ -53,4 +58,4 @@ class listDataset(Dataset):
             tmp = tmp.view(-1)
             if r.shape[0] > 0 and tmp.numel() > 5:
                 label[0:(5*r.shape[0])] = tmp
-            return (img, label)
+            return (timg, label)
