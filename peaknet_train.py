@@ -30,6 +30,7 @@ def init_model( model ):
             #print( model.models[ind] )
             torch.nn.init.kaiming_normal( model.models[ind][0].weight )
 
+
 def updateGrad( model, grad ):
     #with torch.no_grad():
     model_dict = dict( model.named_parameters() )
@@ -38,7 +39,6 @@ def updateGrad( model, grad ):
         #model_dict[key].grad.data = grad[key].data
         model_dict[key]._grad = grad[key]
     model.cuda()
-
 
 
 def optimizer( model, adagrad=False, lr=0.001 ):

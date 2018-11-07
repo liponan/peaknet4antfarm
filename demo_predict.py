@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as pat
 import matplotlib.cm as cm
 
-def load_from_cxi( filename, idx ):
+def load_from_cxi( filename, idx, box_size=7 ):
     f = h5py.File(filename, 'r')
     nPeaks = f["entry_1/result_1/nPeaks"].value
     dataset_hits = len(nPeaks)
@@ -32,9 +32,12 @@ def load_from_cxi( filename, idx ):
     imgs = np.reshape( imgs, (1, 32, 185, 388) )
     n, m, h, w = imgs.shape
 
+    cls = np.zeros( (nPeaks[idx],) )
     s = np.zeros( (nPeaks[idx],) )
     r = np.zeros( (nPeaks[idx],) )
     c = np.zeros( (nPeaks[idx],) )
+    ww = np.zeros( (nPeaks[idx],) )
+    hh = np.zeros( (nPeaks[idx],) )
     for u in range(nPeaks[idx]):
         my_s = (int(y_label[u])/185)*4 + (int(x_label[u])/388)
         my_r = y_label[u] % 185
@@ -42,7 +45,9 @@ def load_from_cxi( filename, idx ):
         s[u] = my_s
         r[u] = my_r
         c[u] = my_c
-        labels = (s, r, c)
+        hh[u] = box_size
+        ww[u] = box_size
+    labels = (cls, s, r, c, hh, ww)
 
     return imgs, labels
 
@@ -115,11 +120,13 @@ def visualize( imgs, labels, nms_boxes, plot_label=True, plot_box=True,
         im0 = plt.imshow(img, vmin=0, vmax=15000, cmap=cm.gray)
 
         if plot_label:
-            my_r = labels[1][ labels[0] == i ]
-            my_c = labels[2][ labels[0] == i ]
+            my_r = labels[2][ labels[1] == i ]
+            my_c = labels[3][ labels[1] == i ]
+            my_h = labels[4][ labels[1] == i ]
+            my_w = labels[5][ labels[1] == i ]
             for j in range(len(my_r)):
-                x = my_c[j] - box_size/2.0
-                y = my_r[j] - box_size/2.0
+                x = my_c[j] - my_w[i]/2.0
+                y = my_r[j] - my_h[i]/2.0
                 ww = box_size
                 hh = box_size
                 rect = pat.Rectangle( (x, y), ww, hh, color="c", fill=False, linewidth=1 )
@@ -139,10 +146,8 @@ def visualize( imgs, labels, nms_boxes, plot_label=True, plot_box=True,
         plt.savefig( os.path.join(output_path, filename), bbox_inces='tight', dpi=300)
 
 
-def main():
+def main( filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup", idx=468):
 
-    filename = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
-    idx = 468
     imgs, labels = load_from_cxi( filename, idx )
 
     net = Peaknet()
