@@ -29,7 +29,7 @@ class listDataset(Dataset):
     def __getitem__(self, index):
         assert index <= len(self), 'index range error'
 
-	    maxPeaks = 1024
+	maxPeaks = 1024
         (n,m,h,w) = self.imgs.shape
         ind1 = index / m
         ind2 = index % m
