@@ -29,6 +29,10 @@ class Peaknet():
             self.writer = SummaryWriter( project_name )
         self.writer.add_custom_scalars( parameters )
 
+    def loadCfg( self, cfgFile ):
+        self.model = Darknet( cfgFile )
+
+
     def loadWeights( self, cfgFile, weightFile ):
         self.model = Darknet( cfgFile )
         self.model.load_weights( weightFile )
@@ -42,6 +46,10 @@ class Peaknet():
         self.model = Darknet( os.path.join( cwd, workPath, 'cfg/newpeaksv10-asic.cfg' ) )
         #self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv10_40000.weights") )
         self.model.load_weights( os.path.join( cwd, workPath, "../darknet/backup/newpeaksv10_100.weights") )
+
+
+    def init_model( self ):
+        peaknet_train.init_model( self.model )
 
     def train( self, imgs, labels, box_size = 7, batch_size=1, use_cuda=True, writer=None ):
         peaknet_train.train_batch( self.model, imgs, labels, batch_size=batch_size,
