@@ -4,9 +4,11 @@ import time
 # from torch.autograd import Variable
 import torch as t
 import sys
-sys.path.append(os.path.abspath('../pytorch-yolo2'))
+# sys.path.append(os.path.abspath('../pytorch-yolo2'))
 from darknet import Darknet
 import peaknet_train
+from peaknet_validate import validate_batch
+from peaknet_test import test_batch
 #from peaknet_train import train_batch, updateGrad, optimize
 # from train import train_peaknet
 # from preprocess import prep_image, inp_to_image
@@ -39,10 +41,9 @@ class Peaknet():
         #self.model.load_weights( os.path.join( cwd, workPath, "weights/newpeaksv10_40000.weights") )
         self.model.load_weights( os.path.join( cwd, workPath, "../darknet/backup/newpeaksv10_500.weights") )
 
-
     def train( self, imgs, labels, box_size = 7, batch_size=1, use_cuda=True, writer=None ):
-        peaknet_train.train_batch( self.model, imgs, labels, batch_size=batch_size, box_size=box_size, 
-                                    use_cuda=use_cuda, writer=writer)        
+        peaknet_train.train_batch( self.model, imgs, labels, batch_size=batch_size,
+                                box_size=box_size, use_cuda=use_cuda, writer=writer)
 
     def model( self ):
         return self.model
@@ -54,12 +55,14 @@ class Peaknet():
             grad[key] = val.grad.cpu()
         return grad
 
-    def test( self, imgs, box_size = 7 ):
-        results = None
+    def predict( self, imgs, box_size = 7 ):
+        results = predict_batch( self.model, imgs, batch_size=batch_size,
+                                box_size=box_size, use_cuda=use_cuda)
         return results
 
     def validate( self, imgs, golden_labels, box_size = 7 ):
-        results = None
+        results = validate_batch( self.model, imgs, labels, batch_size=batch_size,
+                                box_size=box_size, use_cuda=use_cuda, writer=writer)
         return results
 
     def updateModel( self, model ):

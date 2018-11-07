@@ -30,7 +30,6 @@ def updateGrad( model, grad ):
     model.cuda()
 
 
-
 def optimize( model, adagrad=False ):
     # lr = learning_rate/batch_size
     if adagrad:
@@ -64,7 +63,7 @@ def adjust_learning_rate(optimizer, batch):
 
 def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, writer=None ):
     debug = True
-    
+
 
     # global processed_batches
     # t0 = time.time()
@@ -74,19 +73,10 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
     #     cur_model = model
     train_loader = torch.utils.data.DataLoader(
         peaknet_dataset.listDataset(imgs, labels,
-                        shape=(imgs.shape[2], imgs.shape[3]),
-                        shuffle=True,
-                        #transform=transforms.Compose([
-                        #    transforms.ToTensor(),
-                        #    ]),
-                        transform=None,
-                        train=True,
-                        box_size=box_size,
-                        # seen=cur_model.seen,
-                        batch_size=batch_size
-                        # num_workers=num_workers
-                        ),
-        # batch_size=batch_size, shuffle=False, **kwargs)
+            shape=(imgs.shape[2], imgs.shape[3]),
+            predict=False,
+            box_size=box_size,
+            ),
         batch_size=batch_size, shuffle=False)
 
     # lr = adjust_learning_rate(optimizer, processed_batches)
@@ -119,7 +109,7 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
         #print(output)
         t6 = time.time()
         region_loss.seen = region_loss.seen + data.data.size(0)
-        model.seen = region_loss.seen 
+        model.seen = region_loss.seen
         #try:
         if debug:
             print("output", output.size())
@@ -142,9 +132,9 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
         # optimizer.step()
         t9 = time.time()
         if writer != None:
-            writer.add_scalar('loss', loss, model.seen) 
+            writer.add_scalar('loss', loss, model.seen)
         #writer.export_scalars_to_json("./all_scalars.json")
-        
+
         if False and batch_idx > 1:
             avg_time[0] = avg_time[0] + (t2-t1)
             avg_time[1] = avg_time[1] + (t3-t2)
@@ -173,6 +163,8 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
     #     logging('save weights to %s/%06d.weights' % (backupdir, epoch+1))
     #     cur_model.seen = (epoch + 1) * len(train_loader.dataset)
     #     cur_model.save_weights('%s/%06d.weights' % (backupdir, epoch+1))
+
+"""
 
 def test(epoch):
     def truths_length(truths):
@@ -324,3 +316,4 @@ def train_peaknet( model, trainer, imgs, labels, tmpdir ):
     # for epoch in range(init_epoch, max_epochs):
     #     train(epoch)
         # test(epoch)
+"""
