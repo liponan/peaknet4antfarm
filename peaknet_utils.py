@@ -1,3 +1,9 @@
+import h5py
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as pat
+import matplotlib.cm as cm
+
 def loadLabels(path, num):
     data = []
     for u in range(num):
@@ -10,3 +16,135 @@ def loadLabels(path, num):
             labels.append( (x,y) )
         data.append( labels )
     return data
+
+
+def visualize( imgs, labels=None, nms_boxes=None, plot_label=False, plot_box=False, box_size=7, indexes=[]):
+    for i in indexes:
+        box = nms_boxes[i]
+        if len(box) == 0:
+            continue
+        fig, ax = plt.subplots(1)
+        img = imgs[0,i,:,:]
+        #h, w = img.shape
+        h, w = 192, 392
+        # plot image
+        im0 = plt.imshow(img, vmin=0, vmax=15000, cmap=cm.gray)
+        plt.title( "ASIC " + str(i) ) 
+        fig.set_size_inches(12, 6)
+        # plot labels
+        if plot_label:
+            my_r = labels[2][ labels[1] == i ]
+            my_c = labels[3][ labels[1] == i ]
+            my_h = labels[4][ labels[1] == i ]
+            my_w = labels[5][ labels[1] == i ]
+            for j in range(len(my_r)):
+                x = my_c[j] - my_w[i]/2.0
+                y = my_r[j] - my_h[i]/2.0
+                ww = box_size
+                hh = box_size
+                rect = pat.Rectangle( (x, y), ww, hh, color="c", fill=False, linewidth=1 )
+                ax.add_patch(rect)
+        # plot predictions
+        if plot_box:
+            for peak in nms_boxes[i]:
+                x = w * ( peak[0]-0.5*peak[2] ) - 2
+                y = h * ( peak[1]-0.5*peak[3] ) - 4
+                ww = w * peak[2]
+                hh = h * peak[3]
+                rect = pat.Rectangle( (x, y), ww, hh, color="m", fill=False, linewidth=1 )
+                ax.add_patch(rect)
+
+
+def build_dataset( filename, dev_size, box_size=7, total_size=-1 ):
+    # H5 file IO
+    with h5py.File(filename, 'r') as f:
+        nPeaks = f["entry_1/result_1/nPeaks"].value
+        dataset_hits = len(nPeaks)
+        print('hits: ' + str(dataset_hits))
+        if total_size == -1:
+            n_total = dataset_hits
+        else:
+            n_total = total_size
+        imgs = f["entry_1/data_1/data"][:n_total,:,:]
+        masks = f["entry_1/data_1/mask"][:n_total,:,:]
+        imgs= imgs * (1-masks)
+        x_label = f['entry_1/result_1/peakXPosRaw'][:n_total,:]
+        y_label = f['entry_1/result_1/peakYPosRaw'][:n_total,:]
+    # image reshaping
+    imgs = np.reshape( imgs, (-1, 8, 185, 4, 194*2) )
+    imgs = np.transpose( imgs, (0, 1, 3, 2, 4) )
+    imgs = np.reshape( imgs, (-1, 32, 185, 388) )
+    n, m, h, w = imgs.shape
+    # label formatting
+    labels = []
+    for i in range(n_total):
+        cls = np.zeros( (nPeaks[i],) )
+        s = np.zeros( (nPeaks[i],) )
+        r = np.zeros( (nPeaks[i],) )
+        c = np.zeros( (nPeaks[i],) )
+        ww = np.zeros( (nPeaks[i],) )
+        hh = np.zeros( (nPeaks[i],) )
+        for j in range(nPeaks[i]):
+            my_s = (int(y_label[i,j])/185)*4 + (int(x_label[i,j])/388)
+            my_r = y_label[i,j] % 185
+            my_c = x_label[i,j] % 388
+            s[j] = my_s
+            r[j] = my_r
+            c[j] = my_c
+            hh[j] = box_size
+            ww[j] = box_size
+        my_label = (cls, s, r, c, hh, ww)
+        labels.append( my_label )
+    # randomize    
+    rand_idxs = np.random.permutation( n_total )
+    imgs = imgs[ rand_idxs, :, :, : ]
+    labels = [labels[i] for i in rand_idxs]
+    # build dev set
+    if dev_size > 0:
+        if dev_size < 1:
+            dev_size = round( dev_size * dataset_hits )
+    dev_imgs = imgs[:dev_size,:,:,:]
+    dev_labels = labels[:dev_size]
+    train_imgs = imgs[dev_size:,:,:,:]
+    train_labels = labels[dev_size:]
+
+    return train_imgs, train_labels, dev_imgs, dev_labels
+ 
+ 
+def load_from_cxi( filename, idx, box_size=7 ):
+    f = h5py.File(filename, 'r')
+    nPeaks = f["entry_1/result_1/nPeaks"].value
+    dataset_hits = len(nPeaks)
+    #print('hits: ' + str(dataset_hits))
+    dataset_peaks = np.sum(nPeaks)
+    #print('peaks: ' + str(dataset_peaks))
+    img = f["entry_1/data_1/data"][idx,:,:]
+    mask = f["entry_1/data_1/mask"][idx,:,:]
+    img = img * (1-mask)
+    x_label = f['entry_1/result_1/peakXPosRaw'][idx,:]
+    y_label = f['entry_1/result_1/peakYPosRaw'][idx,:]
+    f.close()
+
+    imgs = np.reshape( img, (8, 185, 4, 194*2) )
+    imgs = np.transpose( imgs, (0, 2, 1, 3) )
+    imgs = np.reshape( imgs, (1, 32, 185, 388) )
+    n, m, h, w = imgs.shape
+
+    cls = np.zeros( (nPeaks[idx],) )
+    s = np.zeros( (nPeaks[idx],) )
+    r = np.zeros( (nPeaks[idx],) )
+    c = np.zeros( (nPeaks[idx],) )
+    ww = np.zeros( (nPeaks[idx],) )
+    hh = np.zeros( (nPeaks[idx],) )
+    for u in range(nPeaks[idx]):
+        my_s = (int(y_label[u])/185)*4 + (int(x_label[u])/388)
+        my_r = y_label[u] % 185
+        my_c = x_label[u] % 388
+        s[u] = my_s
+        r[u] = my_r
+        c[u] = my_c
+        hh[u] = box_size
+        ww[u] = box_size
+    labels = (cls, s, r, c, hh, ww)
+
+    return imgs, labels

@@ -29,24 +29,27 @@ class listDataset(Dataset):
     def __getitem__(self, index):
         assert index <= len(self), 'index range error'
 
-	maxPeaks = 1024
+        maxPeaks = 1024
         (n,m,h,w) = self.imgs.shape
         ind1 = index / m
         ind2 = index % m
 
-	new_h = 192
+        new_h = 192
         new_w = 392
         timg = torch.zeros( ( 1, new_h, new_w) )
 
-        img = self.imgs[ind1,ind2,:,:]
+        img = self.imgs[ind1,ind2,:,:] / 15000
         timg[:,4:189,2:390] = torch.from_numpy( img )
         timg = timg.view(-1, new_h, new_w )
 
         if self.predict:
             return timg
         else:
-            r = np.reshape( self.labels[ind1][1][ self.labels[ind1][0]==ind2 ], (-1,1) )
-            c = np.reshape( self.labels[ind1][2][ self.labels[ind1][0]==ind2 ], (-1,1) )
+            r = np.reshape( self.labels[ind1][2][ self.labels[ind1][1]==ind2 ], (-1,1) )
+            c = np.reshape( self.labels[ind1][3][ self.labels[ind1][1]==ind2 ], (-1,1) )
+            bh = np.reshape( self.labels[ind1][4][ self.labels[ind1][1]==ind2 ], (-1,1) )
+            bw = np.reshape( self.labels[ind1][5][ self.labels[ind1][1]==ind2 ], (-1,1) )
+            cls = np.zeros( r.shape )
             label = torch.zeros(5*maxPeaks)
             bh[ bh == 0 ] = self.box_size
             bw[ bw == 0 ] = self.box_size

@@ -27,7 +27,7 @@ class Peaknet():
             self.writer = SummaryWriter()
         else:
             self.writer = SummaryWriter( project_name )
-        self.writer.add_custom_scalars( parameters )
+        #self.writer.add_custom_scalars( parameters )
 
     def loadCfg( self, cfgFile ):
         self.model = Darknet( cfgFile )
@@ -53,7 +53,7 @@ class Peaknet():
 
     def train( self, imgs, labels, box_size = 7, batch_size=1, use_cuda=True, writer=None ):
         peaknet_train.train_batch( self.model, imgs, labels, batch_size=batch_size,
-                                box_size=box_size, use_cuda=use_cuda, writer=writer)
+                                box_size=box_size, use_cuda=use_cuda, writer=self.writer)
 
     def model( self ):
         return self.model
@@ -65,8 +65,8 @@ class Peaknet():
             grad[key] = val.grad.cpu()
         return grad
 
-    def predict( self, imgs, box_size = 7, batch_size=1, use_cuda=True ):
-        results = predict_batch( self.model, imgs, batch_size=batch_size,
+    def predict( self, imgs, box_size = 7, batch_size=1, conf_thresh=0.15, use_cuda=True ):
+        results = predict_batch( self.model, imgs, batch_size=batch_size, conf_thresh=conf_thresh,
                                 box_size=box_size, use_cuda=use_cuda)
         return results
 

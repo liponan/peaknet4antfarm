@@ -31,6 +31,7 @@ def predict_batch( model, imgs, conf_thresh=0.15, nms_thresh=0.45, batch_size=32
                         box_size=box_size,
                         ),
         batch_size=batch_size, shuffle=False)
+    #model.train()
     model.eval()
 
     for batch_idx, data in enumerate(test_loader):
@@ -40,9 +41,11 @@ def predict_batch( model, imgs, conf_thresh=0.15, nms_thresh=0.45, batch_size=32
         output, _= model( data.float() )
         output = output.data
         #print(output.size())
+        #print(output)
         #print(model.num_classes, model.anchors, model.num_anchors)
 
         boxes = get_region_boxes(output, conf_thresh, model.num_classes, model.anchors, model.num_anchors)
+        #print(len(boxes[0][0]))
         nms_boxes = []
         for box in boxes:
             n0 = len(box)
