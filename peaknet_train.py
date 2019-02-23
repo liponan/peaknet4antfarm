@@ -8,14 +8,14 @@ import torch.nn.init
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
-from torchvision import datasets, transforms
+# from torchvision import datasets, transforms
 from torch.autograd import Variable
 
 import peaknet_dataset
 import random
 import math
 import os
-from utils import *
+from peaknet_utils import *
 from cfg import parse_cfg
 from region_loss import RegionLoss
 from darknet_utils import get_region_boxes, nms
@@ -92,7 +92,7 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
     # lr = adjust_learning_rate(optimizer, processed_batches)
     # logging('epoch %d, processed %d samples, lr %f' % (epoch, epoch * len(train_loader.dataset), lr))
     model.train()
-    #model.eval()
+#     model.eval()
     region_loss = model.loss
     region_loss.seen = model.seen
     t1 = time.time()
@@ -130,7 +130,9 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
             print("label length", len(target))
             print("label[0] length", len(target[0]))
         #region_loss = RegionLoss()
+        
         loss, recall = region_loss(output, target)
+
 
         if False:
             print("label length", len(target))
@@ -144,7 +146,7 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
         t7 = time.time()
         loss.backward()
         t8 = time.time()
-        #optimizer.step()
+#         optimizer.step()
         t9 = time.time()
         if writer != None:
             #writer.add_scalars('loss/recall', {"loss":loss, "recall":recall}, model.seen)

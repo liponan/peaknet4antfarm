@@ -7,14 +7,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
-from torchvision import datasets, transforms
+# from torchvision import datasets, transforms
 from torch.autograd import Variable
 
 import peaknet_dataset
 import random
 import math
 import os
-from utils import *
+from peaknet_utils import *
 from cfg import parse_cfg
 from region_loss import RegionLoss
 from darknet import Darknet

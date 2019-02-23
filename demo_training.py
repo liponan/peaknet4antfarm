@@ -25,8 +25,8 @@ project = "cxic0415_0093"
 t_init = time.time()
 writer = SummaryWriter( "runs/" + project + '_' + set_algo + '_' + str(set_lr) + '_' + set_comment )
 
-filename_train = "/reg/neh/home/liponan/data/cxic0415/r0093/cxic0415_0093.cxi.backup"
-filename_valid = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi.backup"
+filename_train = "/reg/neh/home/liponan/data/cxic0415/r0090/cxic0415_0090.cxi"
+filename_valid = "/reg/neh/home/liponan/data/cxic0415/r0091/cxic0415_0091.cxi"
 
 
 #filename = "/reg/neh/home/liponan/data/cxitut13/r0010/cxitut13_0010.cxi.backup"
@@ -47,13 +47,14 @@ _, h, w = imgs.shape
 f.close()
 print('img:', h, w)
 
-batch_size = 3
+batch_size = 2
 nEpoch = 10
 
 ###########
 
 t3 = time.time()
 pn = Peaknet()
+pn.loadCfg( "../pytorch-yolo2/cfg/newpeaksv10-asic.cfg" )
 pn.init_model()
 pn.model.train()
 pn.model.cuda()
@@ -76,9 +77,9 @@ for ep in range(nEpoch):
             t0 = time.time()
 
         print("ep", ep+1, "img", t)
-	t1 = time.time()
+        t1 = time.time()
 
-        f = h5py.File(filename, 'r')
+        f = h5py.File(filename_train, 'r')
         img = f["entry_1/data_1/data"][t,:,:]
         mask = f["entry_1/data_1/mask"][t,:,:]
         img = img * (1-mask)
@@ -111,19 +112,18 @@ for ep in range(nEpoch):
         batch_labels.append( labels )
         t2 = time.time()
         #print("data proceessing time", t2-t1)
-        if t % batch_size == (batch_size-1) or t == (dataset_hits-1):
-	    
+        if t % batch_size == (batch_size-1) or t == (dataset_hits-1):   
             pn.set_optimizer(adagrad=set_algo=="ada", lr=set_lr )
-	    pn.train( batch_imgs, batch_labels, batch_size=32*3, use_cuda=True )
-	    pn.optimize( optimizer )
-	    
-	    t5 = time.time()
-	    print("time per event", 1.0*(t5-t0)/batch_size)
+        pn.train( batch_imgs, batch_labels, batch_size=32*3, use_cuda=True )
+#         pn.optimize( optimizer )
+        
+        t5 = time.time()
+        print("time per event", 1.0*(t5-t0)/batch_size)
 
     pn.model.save_weights( "results/weights/" + project + "_ep"+str(ep+1)+".weights" )
 
     img, label = load_from_cxi( filename_valid, idx_valid )
-    pn.valid( 
+#     pn.valid( #TODO 
             #model.load_weights( "results/cxic0415_0091_ep"+str(ep)+".weights" )
             #model_dict = dict( model.named_parameters() )
             #for key, value in model_dict.items():
