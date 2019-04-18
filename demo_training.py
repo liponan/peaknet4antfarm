@@ -18,7 +18,7 @@ from demo_predict import load_from_cxi, predict
 
 set_algo = "ada"
 set_lr = 0.001
-set_comment = "kaiming"
+set_comment = "kaiming_v2"
 project = "cxic0415_0093"
 #project = "cxitut13_0010"
 
@@ -114,7 +114,7 @@ for ep in range(nEpoch):
         #print("data proceessing time", t2-t1)
         if t % batch_size == (batch_size-1) or t == (dataset_hits-1):   
             pn.set_optimizer(adagrad=set_algo=="ada", lr=set_lr )
-        pn.train( batch_imgs, batch_labels, batch_size=32*3, use_cuda=True )
+        pn.train( batch_imgs, batch_labels, mini_batch_size=32*3, use_cuda=True )
 #         pn.optimize( optimizer )
         
         t5 = time.time()
