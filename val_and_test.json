@@ -1,0 +1,15 @@
+{
+  "test":{
+    "experiment": ["cxic0415","cxic0515"],
+    "run": [92,15],
+    "detector": ["DscCsPad", "DsdCsPad"],
+    "events": [":", "0:1000"]
+  },
+  "validate":{
+    "experiment": ["cxi78513", "cxic0415", "cxic0415"],
+    "run": [30, 90, 91],
+    "detector": ["CxiDs1.0:Cspad.0", "CxiDs1.0:Cspad.0", "CxiDs1.0:Cspad.0"],
+    "events": ["0:10", "0:2:8", "0:2:4"],
+    "subsetEvents": ["0:2", "0:2", "0:2"]
+  }
+}
