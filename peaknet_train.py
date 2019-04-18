@@ -31,14 +31,17 @@ def init_model( model ):
             torch.nn.init.kaiming_normal( model.models[ind][0].weight )
 
 
-def updateGrad( model, grad ):
+def updateGrad( model, grad, delta=0, useGPU=False ):
     #with torch.no_grad():
     model_dict = dict( model.named_parameters() )
     #model_dict2 = dict( model2.named_parameters() )
     for key, value in model_dict.items():
         #model_dict[key].grad.data = grad[key].data
         model_dict[key]._grad = grad[key]
-    model.cuda()
+    model.seen += delta
+    if useGPU:
+    	model.cuda()
+    print("model seen", model.seen)
 
 
 def optimizer( model, adagrad=False, lr=0.001 ):
@@ -78,8 +81,8 @@ def adjust_learning_rate(optimizer, batch):
         param_group['lr'] = lr/batch_size
     return lr
 
-def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, writer=None ):
-    debug = False
+def train_batch( model, imgs, labels, mini_batch_size=32, box_size=7, use_cuda=True, writer=None, verbose=False ):
+    optimizer = optim.Adagrad(model.parameters(), lr=0.001, weight_decay=0.0005)
 
     train_loader = torch.utils.data.DataLoader(
         peaknet_dataset.listDataset(imgs, labels,
@@ -87,7 +90,7 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
             predict=False,
             box_size=box_size,
             ),
-        batch_size=batch_size, shuffle=False)
+        batch_size=mini_batch_size, shuffle=True)
 
     # lr = adjust_learning_rate(optimizer, processed_batches)
     # logging('epoch %d, processed %d samples, lr %f' % (epoch, epoch * len(train_loader.dataset), lr))
@@ -99,12 +102,21 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
     avg_time = torch.zeros(9)
 
     for batch_idx, (data, target) in enumerate(train_loader):
+        #print("data min", data.min())
+        #print("data max", data.max())
         t2 = time.time()
+        optimizer.zero_grad()
         # adjust_learning_rate(optimizer, processed_batches)
         # processed_batches = processed_batches + 1
         #if (batch_idx+1) % dot_interval == 0:
         #    sys.stdout.write('.')
         #print("timgs type", data.type())
+        if verbose:
+            for i in range( int(target.size(0) ) ):
+                for j in range( int(target.size(1)/5) ):
+                    if target[i,j*5+3] < 0.001:
+                        break
+                    print( i, j,  target[i, j*5+0], target[i, j*5+1], target[i, j*5+2], target[i, j*5+3], target[i, j*5+4] )
         if use_cuda:
             data = data.cuda()
             target= target.cuda()
@@ -125,7 +137,7 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
         region_loss.seen = region_loss.seen + data.data.size(0)
         model.seen = region_loss.seen
         #try:
-        if debug:
+        if verbose:
             print("output", output.size())
             print("label length", len(target))
             print("label[0] length", len(target[0]))
@@ -134,19 +146,19 @@ def train_batch( model, imgs, labels, batch_size=32, box_size=7, use_cuda=True, 
         loss, recall = region_loss(output, target)
 
 
-        if False:
+        if verbose:
             print("label length", len(target))
             print("label[0]", len(target[0]))
-            print("label[0]", target[0])
+            #print("label[0]", target[0,1])
             #print("label[0]", target[0].shape)
             #print("label[1]", target[1].shape)
             #print("label[2]", target[2].shape)
-            raise "something wrong with the labels?"
+#             raise "something wrong with the labels?"
 
         t7 = time.time()
         loss.backward()
         t8 = time.time()
-#         optimizer.step()
+        optimizer.step()
         t9 = time.time()
         if writer != None:
             #writer.add_scalars('loss/recall', {"loss":loss, "recall":recall}, model.seen)

@@ -3,6 +3,88 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as pat
 import matplotlib.cm as cm
+import psana
+import json
+import pandas as pd
+
+
+def psanaImageLoader(rows):
+    print("rows", rows)
+#     print( str(rows.loc[0,"exp"]) )
+    # rows is a subset of a df
+    psana_runs = {}
+    n = len(rows)
+    imgs = np.zeros( (n, 32, 185, 388) )
+#     print("rows.iloc[:,0]", rows.iloc[:,0])
+    for i, j  in enumerate(rows.index):
+        # i: 0,1,2,...
+        # j: DF index
+        print("i", i)
+        exp = str(rows.loc[j,"exp"])
+        run = str(rows.loc[j,"run"])
+        det = str(rows.loc[j,"detector"])
+        
+        if (exp, run, det) in psana_runs:
+            (this_run, det, times) = psana_runs[(exp, run, det)]
+        else:
+            (this_run, detector, times) = psanaRun(exp, run, det)
+            psana_runs[(exp, run, det)] = (this_run, detector, times)
+            
+        event_idx = int(rows.loc[j,"event"]) 
+        evt = this_run.event(times[event_idx])
+        calib = detector.calib(evt) * detector.mask(evt, calib=True, status=True,
+                              edges=True, central=True,
+                              unbond=True, unbondnbrs=True)
+        imgs[i,:,:,:] = calib
+    imgs = imgs#/np.max(imgs)    
+    return imgs    
+    
+
+def json_parser(filename, mode="validate", subset=False):
+    data = json.load( open("/reg/neh/home/liponan/ai/peaknet4antfarm/val_and_test.json") )
+    data = data[mode]
+    n = len(data["experiment"])
+    df = pd.DataFrame(columns=["exp", "run", "detector", "event"])
+    for i in range(n):
+        exp = data["experiment"][i]
+        run = data["run"][i]
+        det = data["detector"][i]
+        if subset:
+            events = data["subsetEvents"][i].split(":")
+        else:
+            events = data["events"][i].split(":")
+        if len(events) == 3:
+            events = list(range( int(events[0]), int(events[2]), int(events[1]) ))
+        elif len(events) == 2:
+            if len(events[0]) > 0 and len(events[1]) > 0:
+                events = list(range( int(events[0]), int(events[1]) ))
+            else:
+                events = list(range(nEvents(str(exp), str(run), str(det))))
+        elif len(events) == 1:
+            events = [int(events[0])]
+        my_data = [ [exp, run, det, e, False] for e in events ]
+        my_df = pd.DataFrame(my_data, columns=["exp", "run", "detector", "event", "processed"])
+        df = pd.concat( (df, my_df), axis=0 )
+    df = df.reset_index(drop=True)
+    return df
+
+
+def psanaRun(exp_name, run, detector="DscCsPad"):
+    ds = psana.DataSource("exp=" + exp_name + ":run=" + str(run) + ":idx")
+    det = psana.Detector(detector)
+    this_run = ds.runs().next()
+    times = this_run.times()
+    return (this_run, det, times)
+
+
+def nEvents(exp_name, run, detector="DscCsPad"):
+    ds = psana.DataSource("exp=" + exp_name + ":run=" + str(run) + ":idx")
+    det = psana.Detector(detector)
+    this_run = ds.runs().next()
+    times = this_run.times()
+    num_events = len(times)
+    return num_events
+
 
 def loadLabels(path, num):
     data = []
@@ -18,7 +100,7 @@ def loadLabels(path, num):
     return data
 
 
-def visualize( imgs, labels=None, nms_boxes=None, plot_label=False, plot_box=False, box_size=7, indexes=[], vmax=10000):
+def visualize( imgs, labels=None, nms_boxes=None, plot_label=False, plot_box=False, box_size=7, indexes=[], vmin=0, vmax=10000):
     for i in indexes:
         box = nms_boxes[i]
         if len(box) == 0:
@@ -28,7 +110,7 @@ def visualize( imgs, labels=None, nms_boxes=None, plot_label=False, plot_box=Fal
         #h, w = img.shape
         h, w = 192, 392
         # plot image
-        im0 = plt.imshow(img, vmin=0, vmax=vmax, cmap=cm.gray)
+        im0 = plt.imshow(img, vmin=vmin, vmax=vmax, cmap=cm.gray)
         plt.title( "ASIC " + str(i) ) 
         fig.set_size_inches(12, 6)
         # plot labels
@@ -97,7 +179,7 @@ def load_cxi_labels( filename, box_size=7, total_size=-1, shuffle=False ):
         ww = np.zeros( (nObj,) )
         hh = np.zeros( (nObj,) )
         for j in range(nPeaks[i]):
-            my_s = (int(peak_y_label[i,j])/185)*4 + (int(peak_x_label[i,j])/388)
+            my_s = (int(peak_y_label[i,j])/185) + (int(peak_x_label[i,j])/388)*8
             my_r = peak_y_label[i,j] % 185
             my_c = peak_x_label[i,j] % 388
             s[j] = my_s
@@ -116,6 +198,7 @@ def load_cxi_labels( filename, box_size=7, total_size=-1, shuffle=False ):
             c[offset+j] = my_c
             hh[offset+j] = np.minimum( np.minimum( 2*my_r, my_h ), 2*(185-my_r) )
             ww[offset+j] = np.minimum( np.minimum( 2*my_c, my_w ), 2*(388-my_c) )
+            cls[offset+j] = 1
         my_label = (cls, s, r, c, hh, ww)
         labels.append( my_label )
     # randomize    

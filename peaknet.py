@@ -26,7 +26,7 @@ class Peaknet():
         if project_name == None:
             self.writer = SummaryWriter()
         else:
-            self.writer = SummaryWriter( project_name )
+            self.writer = SummaryWriter( project_name, purge_step=0 )
         #self.writer.add_custom_scalars( parameters )
 
     def loadCfg( self, cfgFile ):
@@ -51,9 +51,11 @@ class Peaknet():
     def init_model( self ):
         peaknet_train.init_model( self.model )
 
-    def train( self, imgs, labels, box_size = 7, batch_size=1, use_cuda=True, writer=None ):
-        peaknet_train.train_batch( self.model, imgs, labels, batch_size=batch_size,
-                                box_size=box_size, use_cuda=use_cuda, writer=self.writer)
+    def train( self, imgs, labels, box_size = 7, mini_batch_size=1, use_cuda=True, writer=None, verbose=False ):
+        self.model.delta = self.model.seen
+        peaknet_train.train_batch( self.model, imgs, labels, mini_batch_size=32, 
+                                box_size=box_size, use_cuda=use_cuda, writer=self.writer, verbose=verbose )
+        self.model.delta -= self.model.seen
 
     def model( self ):
         return self.model
@@ -65,21 +67,29 @@ class Peaknet():
             grad[key] = val.grad.cpu()
         return grad
 
-    def predict( self, imgs, box_size = 7, batch_size=1, conf_thresh=0.15, use_cuda=True ):
+    def predict( self, imgs, box_size = 7, batch_size=1, conf_thresh=0.15, nms_thresh=0.45, use_cuda=True ):
         results = predict_batch( self.model, imgs, batch_size=batch_size, conf_thresh=conf_thresh,
-                                box_size=box_size, use_cuda=use_cuda)
+                                nms_thresh=nms_thresh, box_size=box_size, use_cuda=use_cuda)
         return results
 
-    def validate( self, imgs, golden_labels, box_size = 7, batch_size=1, use_cuda=True, writer=None ):
-        results = validate_batch( self.model, imgs, labels, batch_size=batch_size,
-                                box_size=box_size, use_cuda=use_cuda, writer=writer)
-        return results
+    def validate( self, imgs, labels, box_size = 7, mini_batch_size=32, use_cuda=True, writer=None, verbose=False ):
+        recall = validate_batch( self.model, imgs, labels, json_file=None, mini_batch_size=mini_batch_size,
+                                box_size=box_size, use_cuda=use_cuda, writer=writer, verbose=verbose)
+        return recall
+    
+    def validate_psana( self, json_file, box_size = 7, mini_batch_size=32, use_cuda=True, writer=None, verbose=False ):
+        recall = validate_batch( self.model, imgs=None, labels=None, json_file=json_file, mini_batch_size=mini_batch_size,
+                                box_size=box_size, use_cuda=use_cuda, writer=writer, verbose=verbose)
+        return recall
 
     def updateModel( self, model ):
+        delta = model.delta
+        seen = self.model.seen + delta
         self.model = model
+        self.model.seen = seen
 
-    def updateGrad( self, grads ):
-        peaknet_train.updateGrad( self.model, grads )
+    def updateGrad( self, grads, delta=0, useGPU=False):
+        peaknet_train.updateGrad( self.model, grads, delta=delta, useGPU=useGPU )
 
     def set_optimizer( self, adagrad=False, lr=0.001 ):
         self.optimizer = peaknet_train.optimizer( self.model, adagrad=adagrad, lr=lr )
